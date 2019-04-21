@@ -4,7 +4,7 @@ test () {
   expect="$1"
   arg="$2"
 
-  ./sicc $arg > tst.s
+  ./sicc "$arg" > tst.s
   if [ "$(uname)" == 'Darwin' ]; then
     as -o tst.o tst.s
     ld -lSystem -w -e main -o tst tst.o
@@ -22,6 +22,6 @@ test () {
   fi
 }
 
-test 1 '1'
-test 4 '4'
-test 5 '5'
+test 100 '100'
+test 20 '20'
+test 200 '100 120 200'
