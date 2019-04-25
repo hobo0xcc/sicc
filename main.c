@@ -7,6 +7,8 @@
 enum {
   TK_EOF = 256,
   TK_NUM,
+  TK_PLUS,
+  TK_MINUS,
 };
 
 typedef struct _token {
@@ -36,12 +38,23 @@ void tokenize(char *s)
   while ((c = *s)) {
     s++;
     char *str = calloc(1, sizeof(char) * 5);
+
     if (c == '\n') {
       line++;
       continue;
     }
 
     if (c == ' ') {
+      continue;
+    }
+
+    if (c == '+') {
+      tk[n++] = make_token(TK_PLUS, "+", line);
+      continue;
+    }
+
+    if (c == '-') {
+      tk[n++] = make_token(TK_MINUS, "-", line);
       continue;
     }
 
@@ -67,6 +80,22 @@ void gen_asm()
     n++;
     if (t->ty == TK_NUM) {
       printf("  mov rax, %d\n", atoi(t->str));
+      continue;
+    }
+
+    if (t->ty == TK_PLUS) {
+      if (tk[n]->ty != TK_NUM) {
+        error("expected number, but got another");
+      }
+      printf("  add rax, %d\n", atoi(tk[n++]->str));
+      continue;
+    }
+
+    if (t->ty == TK_MINUS) {
+      if (tk[n]->ty != TK_NUM) {
+        error("expected number, but got another");
+      }
+      printf("  sub rax, %d\n", atoi(tk[n++]->str));
       continue;
     }
 
