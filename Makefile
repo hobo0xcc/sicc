@@ -6,6 +6,8 @@ RM=rm -rf
 SRCS=$(wildcard *.c)
 OBJS=$(SRCS:.c=.o)
 
+CFLAGS=-g
+
 sicc: $(OBJS)
 	$(LD) -o $@ $^
 

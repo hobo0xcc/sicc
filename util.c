@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 vec_t *new_vec()
 {
@@ -26,6 +27,17 @@ void vec_push(vec_t *v, void *p)
 {
   grow_vec(v, 1);
   v->data[v->len++] = p;
+}
+
+void vec_append(vec_t *v, int len, ...)
+{
+  va_list ap;
+  va_start(ap, len);
+
+  for (int i = 0; i < len; i++) {
+    vec_push(v, va_arg(ap, void *));
+  }
+  va_end(ap);
 }
 
 void *vec_get(vec_t *v, int pos)

@@ -3,36 +3,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void gen_asm()
+static const char *regs[6] = { "rax", "rbx", "rcx", "rdx", "rsi", "rdi" };
+static int used = 0;
+
+void gen_asm(node_t *node)
 {
-  token_t *t;
-  int n = 0;
-  while ((t = vec_get(tokens, n))->ty != TK_EOF) {
-    n++;
-    token_t *peek = vec_get(tokens, n);
-    if (t->ty == TK_NUM) {
-      printf("  mov rax, %d\n", atoi(t->str));
-      continue;
+  if (node->ty == ND_NUM) {
+    if (used > 5)
+      error("Insufficient registers");
+    printf("  mov %s, %d\n", regs[used++], node->num);
+    return;
+  }
+  else if (node->ty == ND_EXPR) {
+    gen_asm(vec_get(node->expr, 0));
+    gen_asm(vec_get(node->expr, 2));
+    int op = ((node_t *)vec_get(node->expr, 1))->ty;
+    switch (op) {
+      case '+':
+        printf("  add %s, %s\n", regs[used - 2], regs[used - 1]);
+        used--;
+        break;
+      case '-':
+        printf("  sub %s, %s\n", regs[used - 2], regs[used - 1]);
+        used--;
+        break;
+      default:
+        error("Unknown operator");
     }
-
-    if (t->ty == TK_PLUS) {
-      if (peek->ty != TK_NUM) {
-        error("number expected, but got another");
-      }
-      printf("  add rax, %d\n", atoi(peek->str));
-      n++;
-      continue;
-    }
-
-    if (t->ty == TK_MINUS) {
-      if (peek->ty != TK_NUM) {
-        error("number expected, but got another");
-      }
-      printf("  sub rax, %d\n", atoi(peek->str));
-      n++;
-      continue;
-    }
-
-    error("Unknown token type");
+    return;
   }
 }

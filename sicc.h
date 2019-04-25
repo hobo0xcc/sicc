@@ -8,11 +8,10 @@ enum {
   TK_MINUS,
 };
 
-typedef struct _token {
-  int ty;
-  char *str;
-  int line;
-} token_t;
+enum {
+  ND_NUM = 256,
+  ND_EXPR,
+};
 
 typedef struct _vec {
   int cap, len;
@@ -25,12 +24,28 @@ typedef struct _map {
   vec_t *items;
 } map_t;
 
+typedef struct _token {
+  int ty;
+  char *str;
+  int line;
+} token_t;
+
+typedef struct _node {
+  int ty;
+  struct _node *lhs;
+  struct _node *rhs;
+  char *str;
+  int num;
+  vec_t *expr;
+} node_t;
+
 extern vec_t *tokens;
 
 /* util.c */
 vec_t *new_vec();
 void grow_vec(vec_t *v, int len);
 void vec_push(vec_t *v, void *p);
+void vec_append(vec_t *v, int len, ...);
 void *vec_get(vec_t *v, int pos);
 int vec_len(vec_t *v);
 
@@ -46,8 +61,12 @@ void debug();
 /* tokenize.c */
 void tokenize(char *s);
 
+/* parse.c */
+node_t *new_node(int ty);
+node_t *parse();
+
 /* asmgen.c */
-void gen_asm();
+void gen_asm(node_t *node);
 
 /* error.c */
 void error(const char *fmt, ...);

@@ -15,11 +15,12 @@ int main(int argc, char **argv)
   if (!strcmp(arg, "--debug"))
     debug();
   tokenize(arg);
+  node_t *node = parse();
 
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
   printf("main: \n");
-  gen_asm();
+  gen_asm(node);
   printf("  ret\n");
   
   return 0;
