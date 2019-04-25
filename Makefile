@@ -1,10 +1,15 @@
 CC=gcc
 AS=as
-LD=ld
+LD=gcc
 RM=rm -rf
 
-sicc: main.c
-	$(CC) -o $@ $^
+SRCS=$(wildcard *.c)
+OBJS=$(SRCS:.c=.o)
+
+sicc: $(OBJS)
+	$(LD) -o $@ $^
+
+$(OBJS): sicc.h
 
 clean:
-	$(RM) sicc tst tst.*
+	$(RM) sicc $(OBJS) tst tst.*
