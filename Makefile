@@ -4,7 +4,7 @@ LD=ld
 RM=rm -rf
 
 sicc: main.c
-	$(CC) -g -o $@ $^
+	$(CC) -o $@ $^
 
 clean:
 	$(RM) sicc tst tst.*
