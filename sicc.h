@@ -11,14 +11,22 @@ enum {
   TK_MINUS,
   TK_ASTERISK,
   TK_SLASH,
+  TK_ASSIGN,
 
   TK_LPAREN,
   TK_RPAREN,
+  TK_SEMICOLON,
+
+  TK_RETURN,
 };
 
 enum {
-  ND_NUM = 256,
+  ND_STMTS = 256,
+  ND_NUM,
+  ND_IDENT,
   ND_EXPR,
+  ND_VAR_ASSIGN,
+  ND_RETURN,
 };
 
 typedef struct _vec {
@@ -49,22 +57,27 @@ typedef struct _node {
   struct _node *rhs;
   char *str;
   int num;
+  vec_t *stmts;
   vec_t *expr;
 } node_t;
 
 extern vec_t *tokens;
+extern map_t *vars;
 
 /* util.c */
 vec_t *new_vec();
 void grow_vec(vec_t *v, int len);
 void vec_push(vec_t *v, void *p);
 void vec_append(vec_t *v, int len, ...);
+void vec_set(vec_t *v, int pos, void *p);
 void *vec_get(vec_t *v, int pos);
 size_t vec_len(vec_t *v);
 
 map_t *new_map();
 void map_put(map_t *m, char *key, void *item);
+void map_set(map_t *m, char *key, void *item);
 void *map_get(map_t *m, char *key);
+int map_find(map_t *m, char *key);
 int map_index(map_t *m, char *key);
 size_t map_len(map_t *m);
 

@@ -16,12 +16,14 @@ int main(int argc, char **argv)
     debug();
   tokenize(arg);
   node_t *node = parse();
+  vars = new_map();
 
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
   printf("main: \n");
+  printf("  push rbp\n");
+  printf("  mov rbp, rsp\n");
   gen_asm(node);
-  printf("  ret\n");
   
   return 0;
 }

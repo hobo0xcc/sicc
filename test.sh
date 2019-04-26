@@ -22,11 +22,15 @@ test () {
   fi
 }
 
-test 100 '100'
-test 20 '20'
-test 6 '1 + 2 + 3'
-test 10 '10 - 5 + 5 - 2 + 5 - 3'
-test 2 '10 - 3 - (2 + 3)'
-test 8 '2 * 2 * 2'
-test 5 '10 / 2'
-test 5 '(2 * 3 + 5 * 2) / 3'
+test 100 'return 100;'
+test 20 'return 20;'
+test 6 'return 1 + 2 + 3;'
+test 10 'return 10 - 5 + 5 - 2 + 5 - 3;'
+test 2 'return 10 - 3 - (2 + 3);'
+test 8 'return 2 * 2 * 2;'
+test 5 'return 10 / 2;'
+test 5 'return (2 * 3 + 5 * 2) / 3;'
+test 10 'a = 10; return a;'
+test 8 'a = 12; b = 5; c = 9; return a + b - c;'
+test 2 'a = 2; b = 4; return a;'
+test 21 'foo = 2 * 3 + 5; bar = 9 + 2 + 4; return foo + bar - 5;'

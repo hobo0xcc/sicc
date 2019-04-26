@@ -40,6 +40,13 @@ void vec_append(vec_t *v, int len, ...)
   va_end(ap);
 }
 
+void vec_set(vec_t *v, int pos, void *p)
+{
+  if (pos > v->len || pos < 0)
+    return;
+  v->data[pos] = p;
+}
+
 void *vec_get(vec_t *v, int pos)
 {
   if (pos > v->len || pos < 0)
@@ -68,12 +75,27 @@ void map_put(map_t *m, char *key, void *item)
   m->len++;
 }
 
+void map_set(map_t *m, char *key, void *item)
+{
+  int i = map_index(m, key);
+  if (i == -1)
+    return;
+  vec_set(m->items, i, item);
+}
+
 void *map_get(map_t *m, char *key)
 {
   int i;
   if ((i = map_index(m, key)) == -1)
     return NULL;
   return vec_get(m->items, i);
+}
+
+int map_find(map_t *m, char *key)
+{
+  if (map_index(m, key) == -1)
+    return 0;
+  return 1;
 }
 
 int map_index(map_t *m, char *key)
