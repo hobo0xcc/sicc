@@ -47,7 +47,7 @@ void *vec_get(vec_t *v, int pos)
   return v->data[pos];
 }
 
-int vec_len(vec_t *v)
+size_t vec_len(vec_t *v)
 {
   return v->len;
 }
@@ -85,7 +85,50 @@ int map_index(map_t *m, char *key)
   return -1;
 }
 
-int map_len(map_t *m)
+size_t map_len(map_t *m)
 {
   return m->len;
+}
+
+buf_t *new_buf()
+{
+  buf_t *b = calloc(1, sizeof(buf_t));
+  b->len = 0;
+  b->cap = sizeof(char);
+  b->data = malloc(sizeof(char));
+  return b;
+}
+
+void grow_buf(buf_t *b, int len)
+{
+  int blen = b->len + len;
+  if (b->cap >= blen)
+    return;
+  while (blen > b->cap)
+    b->cap *= 2;
+  b->data = realloc(b->data, b->cap);
+}
+
+void buf_push(buf_t *b, char c)
+{
+  grow_buf(b, 1);
+  b->data[b->len++] = c;
+}
+
+void buf_append(buf_t *b, char *str)
+{
+  int len = strlen(str);
+  for (int i = 0; i < len; i++)
+    buf_push(b, str[i]);
+}
+
+size_t buf_len(buf_t *b)
+{
+  return b->len;
+}
+
+char *buf_str(buf_t *b)
+{
+  b->data[b->len] = '\0';
+  return b->data;
 }

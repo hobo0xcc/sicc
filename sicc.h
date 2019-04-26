@@ -1,9 +1,12 @@
 #ifndef SICC_H
 #define SICC_H
 
+#include <stdio.h>
+
 enum {
   TK_EOF = 256,
   TK_NUM,
+  TK_IDENT,
   TK_PLUS,
   TK_MINUS,
   TK_ASTERISK,
@@ -29,6 +32,11 @@ typedef struct _map {
   vec_t *items;
 } map_t;
 
+typedef struct _buf {
+  int len, cap;
+  char *data;
+} buf_t;
+
 typedef struct _token {
   int ty;
   char *str;
@@ -52,13 +60,20 @@ void grow_vec(vec_t *v, int len);
 void vec_push(vec_t *v, void *p);
 void vec_append(vec_t *v, int len, ...);
 void *vec_get(vec_t *v, int pos);
-int vec_len(vec_t *v);
+size_t vec_len(vec_t *v);
 
 map_t *new_map();
 void map_put(map_t *m, char *key, void *item);
 void *map_get(map_t *m, char *key);
 int map_index(map_t *m, char *key);
-int map_len(map_t *m);
+size_t map_len(map_t *m);
+
+buf_t *new_buf();
+void grow_buf(buf_t *b, int len);
+void buf_push(buf_t *b, char c);
+void buf_append(buf_t *b, char *str);
+size_t buf_len(buf_t *b);
+char *buf_str(buf_t *b);
 
 /* debug.c */
 void debug();

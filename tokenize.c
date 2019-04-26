@@ -22,7 +22,6 @@ void tokenize(char *s)
 
   while ((c = *s)) {
     s++;
-    char *str = calloc(1, sizeof(char) * 5);
 
     if (c == '\n') {
       line++;
@@ -57,11 +56,12 @@ void tokenize(char *s)
     }
 
     if (isdigit(c)) {
-      str[0] = c;
-      for (int i = 1; isdigit(*s); i++)
-        str[i] = *s++;
+      buf_t *b = new_buf();
+      buf_push(b, c);
+      while (isdigit(*s))
+        buf_push(b, *s++);
 
-      vec_push(tokens, make_token(TK_NUM, str, line));
+      vec_push(tokens, make_token(TK_NUM, buf_str(b), line));
       continue;
     }
 
