@@ -27,6 +27,44 @@ void gen_asm(node_t *node)
         printf("  sub %s, %s\n", regs[used - 2], regs[used - 1]);
         used--;
         break;
+      case '*':
+        if (used != 2) {
+          printf("  push rax\n");
+          printf("  push rdx\n");
+          printf("  mov rax, %s\n", regs[used - 2]);
+        }
+        else {
+          printf("  push rdx\n");
+        }
+        printf("  mul %s\n", regs[used - 1]);
+        printf("  add rdx, rax\n");
+        printf("  mov %s, rdx\n", regs[used - 2]);
+        printf("  pop rdx\n");
+        if (used != 2)
+          printf("  pop rax\n");
+        used--;
+        break;
+      case '/':
+        if (used != 2) {
+          printf("  push rax\n");
+          printf("  push rdx\n");
+          printf("  mov rax, %s\n", regs[used - 2]);
+        }
+        else {
+          printf("  push rdx\n");
+        }
+        printf("  cdq\n");
+        printf("  div %s\n", regs[used - 1]);
+        if (used != 2) {
+          printf("  mov %s, rax\n", regs[used - 2]);
+          printf("  pop rdx\n");
+          printf("  pop rax\n");
+        }
+        else {
+          printf("  pop rdx\n");
+        }
+        used--;
+        break;
       default:
         error("Unknown operator");
     }

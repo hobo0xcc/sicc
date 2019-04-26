@@ -44,6 +44,7 @@ node_t *new_node(int ty)
 }
 
 static node_t *factor();
+static node_t *mul_div();
 static node_t *add_sub();
 
 static node_t *factor()
@@ -63,12 +64,26 @@ static node_t *factor()
   return NULL;
 }
 
-static node_t *add_sub()
+static node_t *mul_div()
 {
   node_t *left = factor();
-  while (equal(peek(0), "+") || equal(peek(0), "-")) {
+  while (equal(peek(0), "*") || equal(peek(0), "/")) {
     node_t *op = new_node(*(eat()->str));
     node_t *right = factor();
+    node_t *node = new_node(ND_EXPR);
+    node->expr = new_vec();
+    vec_append(node->expr, 3, left, op, right);
+    left = node;
+  }
+  return left;
+}
+
+static node_t *add_sub()
+{
+  node_t *left = mul_div();
+  while (equal(peek(0), "+") || equal(peek(0), "-")) {
+    node_t *op = new_node(*(eat()->str));
+    node_t *right = mul_div();
     node_t *node = new_node(ND_EXPR);
     node->expr = new_vec();
     vec_append(node->expr, 3, left, op, right);

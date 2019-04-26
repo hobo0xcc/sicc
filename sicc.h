@@ -6,6 +6,11 @@ enum {
   TK_NUM,
   TK_PLUS,
   TK_MINUS,
+  TK_ASTERISK,
+  TK_SLASH,
+
+  TK_LPAREN,
+  TK_RPAREN,
 };
 
 enum {

@@ -13,5 +13,8 @@ sicc: $(OBJS)
 
 $(OBJS): sicc.h
 
+test: sicc
+	./test.sh
+
 clean:
 	$(RM) sicc $(OBJS) tst tst.*

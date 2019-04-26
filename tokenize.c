@@ -28,18 +28,31 @@ void tokenize(char *s)
       line++;
       continue;
     }
-
     if (c == ' ') {
       continue;
     }
-
     if (c == '+') {
       vec_push(tokens, make_token(TK_PLUS, "+", line));
       continue;
     }
-
     if (c == '-') {
       vec_push(tokens, make_token(TK_MINUS, "-", line));
+      continue;
+    }
+    if (c == '*') {
+      vec_push(tokens, make_token(TK_ASTERISK, "*", line));
+      continue;
+    }
+    if (c == '/') {
+      vec_push(tokens, make_token(TK_SLASH, "/", line));
+      continue;
+    }
+    if (c == '(') {
+      vec_push(tokens, make_token(TK_LPAREN, "(", line));
+      continue;
+    }
+    if (c == ')') {
+      vec_push(tokens, make_token(TK_RPAREN, ")", line));
       continue;
     }
 
