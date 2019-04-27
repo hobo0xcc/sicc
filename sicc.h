@@ -12,6 +12,8 @@ enum {
   TK_ASTERISK,
   TK_SLASH,
   TK_ASSIGN,
+  TK_GREATER,
+  TK_LESS,
 
   TK_LPAREN,
   TK_RPAREN,

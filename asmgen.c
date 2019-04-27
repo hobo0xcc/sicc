@@ -117,6 +117,22 @@ void gen_asm(node_t *node)
         }
         used--;
         break;
+      case '>':
+        printf("  xor r8, r8\n");
+        printf("  cmp %s, %s\n", regs[used - 2], regs[used - 1]);
+        printf("  cmovng %s, r8\n", regs[used - 2]);
+        printf("  mov r8, 1\n");
+        printf("  cmovg %s, r8\n", regs[used - 2]);
+        used--;
+        break;
+      case '<':
+        printf("  xor r8, r8\n");
+        printf("  cmp %s, %s\n", regs[used - 2], regs[used - 1]);
+        printf("  cmovnl %s, r8\n", regs[used - 2]);
+        printf("  mov r8, 1\n");
+        printf("  cmovl %s, r8\n", regs[used - 2]);
+        used--;
+        break;
       default:
         error("Unknown operator: %d", op);
     }

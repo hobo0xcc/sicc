@@ -46,6 +46,7 @@ node_t *new_node(int ty)
 static node_t *factor();
 static node_t *mul_div();
 static node_t *add_sub();
+static node_t *great_less();
 static node_t *assign();
 
 static node_t *stmt();
@@ -100,15 +101,30 @@ static node_t *add_sub()
   return left;
 }
 
-static node_t *assign()
+static node_t *great_less()
 {
   node_t *left = add_sub();
+  while (equal(peek(0), ">") || equal(peek(0), "<")) {
+    // If '>=' and '<=' are added, change here and add Node type.
+    node_t *op = new_node(*(eat()->str));
+    node_t *right = add_sub();
+    node_t *node = new_node(ND_EXPR);
+    node->expr = new_vec();
+    vec_append(node->expr, 3, left, op, right);
+    left = node;
+  }
+  return left;
+}
+
+static node_t *assign()
+{
+  node_t *left = great_less();
   while (equal(peek(0), "=")) {
     if (left->ty != ND_IDENT)
       error("Not an identifier");
     left->ty = ND_VAR_ASSIGN;
     node_t *op = new_node(*(eat()->str));
-    node_t *right = add_sub();
+    node_t *right = great_less();
     node_t *node = new_node(ND_EXPR);
     node->expr = new_vec();
     vec_append(node->expr, 3, left, op, right);

@@ -69,6 +69,14 @@ void tokenize(char *s)
       vec_push(tokens, make_token(TK_ASSIGN, "=", line));
       continue;
     }
+    if (c == '>') {
+      vec_push(tokens, make_token(TK_GREATER, ">", line));
+      continue;
+    }
+    if (c == '<') {
+      vec_push(tokens, make_token(TK_LESS, "<", line));
+      continue;
+    }
     if (c == '(') {
       vec_push(tokens, make_token(TK_LPAREN, "(", line));
       continue;
