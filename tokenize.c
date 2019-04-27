@@ -12,6 +12,7 @@ static struct keyword {
 } keywords[] = {
   { "return", TK_RETURN },
   { "if", TK_IF },
+  { "else", TK_ELSE },
   { NULL, 0 },
 };
 

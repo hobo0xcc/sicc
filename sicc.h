@@ -2,6 +2,7 @@
 #define SICC_H
 
 #include <stdio.h>
+#include <stdbool.h>
 
 enum {
   TK_EOF = 256,
@@ -23,6 +24,7 @@ enum {
 
   TK_RETURN,
   TK_IF,
+  TK_ELSE,
 };
 
 enum {
@@ -33,6 +35,7 @@ enum {
   ND_VAR_ASSIGN,
   ND_RETURN,
   ND_IF,
+  ND_ELSE,
 };
 
 typedef struct _vec {
@@ -65,6 +68,9 @@ typedef struct _node {
   int num;
   vec_t *stmts;
   vec_t *expr;
+  struct _node *else_stmt;
+
+  bool if_else;
 } node_t;
 
 extern vec_t *tokens;

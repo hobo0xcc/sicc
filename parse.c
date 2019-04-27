@@ -149,6 +149,14 @@ static node_t *stmt()
     node->rhs = assign();
     expect(eat(), ")");
     node->lhs = stmt();
+    if (type_equal(peek(0), TK_ELSE)) {
+      eat();
+      node->else_stmt = stmt();
+      node->if_else = true;
+    }
+    else {
+      node->if_else = false;
+    }
     return node;
   }
   else {

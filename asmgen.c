@@ -24,6 +24,7 @@ void gen_asm(node_t *node)
     if (used != 1) {
       printf("  mov rax, %s\n", regs[used - 1]);
     }
+    used--;
     printf("  pop rbp\n");
     printf("  ret\n");
     return;
@@ -36,6 +37,9 @@ void gen_asm(node_t *node)
     gen_asm(node->lhs);
     printf("  .L%d:\n", nlabel);
     nlabel++;
+    if (node->if_else) {
+      gen_asm(node->else_stmt);
+    }
     return;
   }
   else if (node->ty == ND_NUM) {
