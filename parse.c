@@ -65,9 +65,19 @@ static node_t *factor()
     return node;
   }
   else if (type_equal(peek(0), TK_IDENT)) {
-    node_t *node = new_node(ND_IDENT);
-    node->str = eat()->str;
-    return node;
+    if (equal(peek(1), "(")) {
+      node_t *node = new_node(ND_FUNC_CALL);
+      node->str = eat()->str;
+      /* TODO: Parse arguments */
+      expect(eat(), "(");
+      expect(eat(), ")");
+      return node;
+    }
+    else {
+      node_t *node = new_node(ND_IDENT);
+      node->str = eat()->str;
+      return node;
+    }
   }
   error("Unknown identifier: %s", peek(0)->str);
   return NULL;

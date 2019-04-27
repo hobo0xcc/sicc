@@ -31,6 +31,7 @@ enum {
   ND_STMTS = 256,
   ND_NUM,
   ND_IDENT,
+  ND_FUNC_CALL,
   ND_EXPR,
   ND_VAR_ASSIGN,
   ND_RETURN,

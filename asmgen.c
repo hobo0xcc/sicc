@@ -63,6 +63,17 @@ void gen_asm(node_t *node)
     printf("  mov %s, [rbp - %d]\n", regs[used++], *(int *)map_get(vars, node->str));
     return;
   }
+  else if (node->ty == ND_FUNC_CALL) {
+    for (int i = 0; i < used; i++) {
+      printf("  push %s\n", regs[i]);
+    }
+    printf("  call _%s\n", node->str);
+
+    for (int i = 0; i < used; i++) {
+      printf("  pop %s\n", regs[i]);
+    }
+    return;
+  }
   else if (node->ty == ND_EXPR) {
     gen_asm(vec_get(node->expr, 0));
     gen_asm(vec_get(node->expr, 2));
