@@ -15,9 +15,12 @@ enum {
 
   TK_LPAREN,
   TK_RPAREN,
+  TK_LBRACE,
+  TK_RBRACE,
   TK_SEMICOLON,
 
   TK_RETURN,
+  TK_IF,
 };
 
 enum {
@@ -27,6 +30,7 @@ enum {
   ND_EXPR,
   ND_VAR_ASSIGN,
   ND_RETURN,
+  ND_IF,
 };
 
 typedef struct _vec {

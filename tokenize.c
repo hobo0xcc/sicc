@@ -11,6 +11,7 @@ static struct keyword {
   int ty;
 } keywords[] = {
   { "return", TK_RETURN },
+  { "if", TK_IF },
   { NULL, 0 },
 };
 
@@ -74,6 +75,14 @@ void tokenize(char *s)
     }
     if (c == ')') {
       vec_push(tokens, make_token(TK_RPAREN, ")", line));
+      continue;
+    }
+    if (c == '{') {
+      vec_push(tokens, make_token(TK_LBRACE, "{", line));
+      continue;
+    }
+    if (c == '}') {
+      vec_push(tokens, make_token(TK_RBRACE, "}", line));
       continue;
     }
     if (c == ';') {

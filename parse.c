@@ -126,6 +126,15 @@ static node_t *stmt()
     expect(eat(), ";");
     return node;
   }
+  else if (type_equal(peek(0), TK_IF)) {
+    eat();
+    node_t *node = new_node(ND_IF);
+    expect(eat(), "(");
+    node->rhs = assign();
+    expect(eat(), ")");
+    node->lhs = stmt();
+    return node;
+  }
   else {
     node_t *node = assign();
     expect(eat(), ";");

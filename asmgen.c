@@ -9,6 +9,8 @@ static int used = 0;
 map_t *vars;
 static int vstack = 0;
 
+static int nlabel = 0;
+
 void gen_asm(node_t *node)
 {
   if (node->ty == ND_STMTS) {
@@ -24,6 +26,16 @@ void gen_asm(node_t *node)
     }
     printf("  pop rbp\n");
     printf("  ret\n");
+    return;
+  }
+  else if (node->ty == ND_IF) {
+    gen_asm(node->rhs);
+    printf("  test %s, %s\n", regs[used - 1], regs[used - 1]);
+    used--;
+    printf("  jz .L%d\n", nlabel);
+    gen_asm(node->lhs);
+    printf("  .L%d:\n", nlabel);
+    nlabel++;
     return;
   }
   else if (node->ty == ND_NUM) {
