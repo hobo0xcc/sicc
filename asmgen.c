@@ -13,7 +13,28 @@ static int nlabel = 0;
 
 void gen_asm(node_t *node)
 {
-  if (node->ty == ND_STMTS) {
+  if (node->ty == ND_FUNCS) {
+    for (int i = 0; i < vec_len(node->funcs); i++) {
+      printf(".global _%s\n", ((node_t *)vec_get(node->funcs, i))->str);
+    }
+    for (int i = 0; i < vec_len(node->funcs); i++) {
+      gen_asm(vec_get(node->funcs, i));
+    }
+    return;
+  }
+  else if (node->ty == ND_FUNC) {
+    printf("_%s:\n", node->str);
+    printf("  push rbp\n");
+    printf("  mov rbp, rsp\n");
+    gen_asm(node->lhs);
+    vec_t *stmts = node->lhs->stmts;
+    if (((node_t *)vec_get(stmts, vec_len(stmts) - 1))->ty != ND_RETURN) {
+      printf("  pop rbp\n");
+      printf("  ret\n");
+    }
+    return;
+  }
+  else if (node->ty == ND_STMTS) {
     for (int i = 0; i < vec_len(node->stmts); i++) {
       gen_asm(vec_get(node->stmts, i));
     }
@@ -68,10 +89,14 @@ void gen_asm(node_t *node)
       printf("  push %s\n", regs[i]);
     }
     printf("  call _%s\n", node->str);
+    if (used != 0) {
+      printf("  mov %s, rax\n", regs[used]);
+    }
 
     for (int i = 0; i < used; i++) {
       printf("  pop %s\n", regs[i]);
     }
+    used++;
     return;
   }
   else if (node->ty == ND_EXPR) {

@@ -50,6 +50,7 @@ static node_t *great_less();
 static node_t *assign();
 
 static node_t *stmt();
+static node_t *function();
 
 static node_t *factor()
 {
@@ -176,12 +177,32 @@ static node_t *stmt()
   }
 }
 
+static node_t *function()
+{
+  node_t *node = new_node(ND_FUNC);
+  if (!type_equal(peek(0), TK_IDENT))
+    error("function name expected, but got %s", peek(0)->str);
+  node->str = eat()->str;
+  /* TODO: Parse argument variables */
+  expect(eat(), "(");
+  expect(eat(), ")");
+  expect(eat(), "{");
+  node_t *prog = new_node(ND_STMTS);
+  prog->stmts = new_vec();
+  while (!equal(peek(0), "}")) {
+    vec_push(prog->stmts, stmt());
+  }
+  node->lhs = prog;
+  expect(eat(), "}");
+  return node;
+}
+
 node_t *parse()
 {
-  node_t *node = new_node(ND_STMTS);
-  node->stmts = new_vec();
+  node_t *node = new_node(ND_FUNCS);
+  node->funcs = new_vec();
   while (!type_equal(peek(0), TK_EOF)) {
-    vec_push(node->stmts, stmt());
+    vec_push(node->funcs, function());
   }
   return node;
 }

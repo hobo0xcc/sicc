@@ -28,7 +28,9 @@ enum {
 };
 
 enum {
-  ND_STMTS = 256,
+  ND_FUNC = 256,
+  ND_FUNCS,
+  ND_STMTS,
   ND_NUM,
   ND_IDENT,
   ND_FUNC_CALL,
@@ -69,6 +71,7 @@ typedef struct _node {
   int num;
   vec_t *stmts;
   vec_t *expr;
+  vec_t *funcs;
   struct _node *else_stmt;
 
   bool if_else;

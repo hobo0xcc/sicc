@@ -7,7 +7,7 @@ test () {
   ./sicc "$arg" > tst.s
   if [ "$(uname)" == 'Darwin' ]; then
     as -o tst.o tst.s
-    ld -lSystem -w -e main -o tst tst.o
+    ld -lSystem -w -e _main -o tst tst.o
   else
     gcc -static -o tst tst.s
   fi
@@ -22,21 +22,6 @@ test () {
   fi
 }
 
-test 100 'return 100;'
-test 20 'return 20;'
-test 6 'return 1 + 2 + 3;'
-test 10 'return 10 - 5 + 5 - 2 + 5 - 3;'
-test 2 'return 10 - 3 - (2 + 3);'
-test 8 'return 2 * 2 * 2;'
-test 5 'return 10 / 2;'
-test 5 'return (2 * 3 + 5 * 2) / 3;'
-test 10 'a = 10; return a;'
-test 8 'a = 12; b = 5; c = 9; return a + b - c;'
-test 2 'a = 2; b = 4; return a;'
-test 21 'foo = 2 * 3 + 5; bar = 9 + 2 + 4; return foo + bar - 5;'
-test 0 'a = 1; if (a) return 0; return 1;'
-test 42 'foo = 42; if (foo) return foo; return 0;'
-test 1 'foo = 10; bar = 5; if (foo < bar) return foo; return 1;'
-test 0 'a = 12; b = 8; if (a + b > 19) return 0; return 1;'
-test 1 'a = 10; if (a < 9) return 0; else return 1;'
-test 0 'foo = 9; if (foo < 8) return 2; else if (foo > 10) return 1; else return 0;'
+test 0 'main() { return 0; }'
+test 15 'main() { a = 10; b = 5; return a + b; }'
+test 4 'one() { return 1; } two() { return 2; } main() { return one() + two() + one(); }'
