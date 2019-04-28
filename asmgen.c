@@ -22,16 +22,55 @@ void gen_asm(node_t *node)
     }
     return;
   }
+  else if (node->ty == ND_ARGS) {
+    int pushed_arg = vec_len(node->args) - 5;
+    int offset = 0;
+    if (pushed_arg > 0)
+      offset = pushed_arg * 8 + 8; // '+ 8' = rbp size
+
+    for (int i = 0; i < vec_len(node->args); i++) {
+      node_t *var = vec_get(node->args, i);
+      gen_asm(var);
+      switch (i) {
+        case 0:
+          printf("  mov [rbp - %d], rdi\n", vstack);
+          break;
+        case 1:
+          printf("  mov [rbp - %d], rsi\n", vstack);
+          break;
+        case 2:
+          printf("  mov [rbp - %d], rdx\n", vstack);
+          break;
+        case 3:
+          printf("  mov [rbp - %d], rcx\n", vstack);
+          break;
+        case 4:
+          printf("  mov [rbp - %d], r8\n", vstack);
+          break;
+        case 5:
+          printf("  mov [rbp - %d], r9\n", vstack);
+          break;
+        default:
+          printf("  mov %s, [rbp + %d]\n", regs[used], offset -= 8);
+          printf("  mov [rbp - %d], %s\n", vstack, regs[used]);
+          break;
+      }
+    }
+    return;
+  }
   else if (node->ty == ND_FUNC) {
     printf("_%s:\n", node->str);
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
+    gen_asm(node->rhs);
     gen_asm(node->lhs);
     vec_t *stmts = node->lhs->stmts;
     if (((node_t *)vec_get(stmts, vec_len(stmts) - 1))->ty != ND_RETURN) {
       printf("  pop rbp\n");
       printf("  ret\n");
     }
+    used = 0;
+    vstack = 0;
     return;
   }
   else if (node->ty == ND_STMTS) {
@@ -84,11 +123,46 @@ void gen_asm(node_t *node)
     printf("  mov %s, [rbp - %d]\n", regs[used++], *(int *)map_get(vars, node->str));
     return;
   }
+  else if (node->ty == ND_PARAMS) {
+    for (int i = vec_len(node->params) - 1; i >= 0; i--) {
+      node_t *param = vec_get(node->params, i);
+      gen_asm(param);
+      switch (i) {
+        case 0:
+          printf("  mov rdi, %s\n", regs[used - 1]);
+          break;
+        case 1:
+          printf("  mov rsi, %s\n", regs[used - 1]);
+          break;
+        case 2:
+          printf("  mov rdx, %s\n", regs[used - 1]);
+          break;
+        case 3:
+          printf("  mov rcx, %s\n", regs[used - 1]);
+          break;
+        case 4:
+          printf("  mov r8, %s\n", regs[used - 1]);
+          break;
+        case 5:
+          printf("  mov r9, %s\n", regs[used - 1]);
+          break;
+        default:
+          printf("  push %s\n", regs[used - 1]);
+          break;
+      }
+      used--;
+    }
+    return;
+  }
   else if (node->ty == ND_FUNC_CALL) {
     for (int i = 0; i < used; i++) {
       printf("  push %s\n", regs[i]);
     }
+    gen_asm(node->rhs);
     printf("  call _%s\n", node->str);
+    int param_size = (int)vec_len(node->rhs->params);
+    if (param_size > 5)
+      printf("  add rsp, %d\n", (param_size - 6) * 8);
     if (used != 0) {
       printf("  mov %s, rax\n", regs[used]);
     }

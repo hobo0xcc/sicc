@@ -42,7 +42,7 @@ node_t *new_node(int ty)
   node->ty = ty;
   return node;
 }
-
+static node_t *params();
 static node_t *factor();
 static node_t *mul_div();
 static node_t *add_sub();
@@ -50,13 +50,34 @@ static node_t *great_less();
 static node_t *assign();
 
 static node_t *stmt();
+static node_t *arguments();
 static node_t *function();
+
+static node_t *params()
+{
+  node_t *node = new_node(ND_PARAMS);
+  node->params = new_vec();
+  expect(eat(), "(");
+  if (equal(peek(0), ")")) {
+    eat();
+    return node;
+  }
+  while (!equal(peek(0), ")")) {
+    vec_push(node->params, assign());
+    if (equal(peek(0), ")")) {
+      eat();
+      break;
+    }
+    expect(eat(), ",");
+  }
+  return node;
+}
 
 static node_t *factor()
 {
   if (equal(peek(0), "(")) {
     eat();
-    node_t *expr = add_sub();
+    node_t *expr = assign();
     expect(eat(), ")");
     return expr;
   }
@@ -69,9 +90,7 @@ static node_t *factor()
     if (equal(peek(1), "(")) {
       node_t *node = new_node(ND_FUNC_CALL);
       node->str = eat()->str;
-      /* TODO: Parse arguments */
-      expect(eat(), "(");
-      expect(eat(), ")");
+      node->rhs = params();
       return node;
     }
     else {
@@ -177,6 +196,30 @@ static node_t *stmt()
   }
 }
 
+static node_t *arguments()
+{
+  node_t *node = new_node(ND_ARGS);
+  node->args = new_vec();
+  expect(eat(), "(");
+  if (equal(peek(0), ")")) {
+    eat();
+    return node;
+  }
+  while (!equal(peek(0), ")")) {
+    node_t *name = new_node(ND_VAR_ASSIGN);
+    if (!type_equal(peek(0), TK_IDENT))
+      error("Identifier expected, but got %s", peek(0)->str);
+    name->str = eat()->str;
+    vec_push(node->args, name);
+    if (equal(peek(0), ")")) {
+      eat();
+      break;
+    }
+    expect(eat(), ",");
+  }
+  return node;
+}
+
 static node_t *function()
 {
   node_t *node = new_node(ND_FUNC);
@@ -184,8 +227,7 @@ static node_t *function()
     error("function name expected, but got %s", peek(0)->str);
   node->str = eat()->str;
   /* TODO: Parse argument variables */
-  expect(eat(), "(");
-  expect(eat(), ")");
+  node_t *args = arguments();
   expect(eat(), "{");
   node_t *prog = new_node(ND_STMTS);
   prog->stmts = new_vec();
@@ -193,6 +235,7 @@ static node_t *function()
     vec_push(prog->stmts, stmt());
   }
   node->lhs = prog;
+  node->rhs = args;
   expect(eat(), "}");
   return node;
 }

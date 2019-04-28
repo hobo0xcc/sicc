@@ -21,6 +21,7 @@ enum {
   TK_LBRACE,
   TK_RBRACE,
   TK_SEMICOLON,
+  TK_COMMA,
 
   TK_RETURN,
   TK_IF,
@@ -30,6 +31,8 @@ enum {
 enum {
   ND_FUNC = 256,
   ND_FUNCS,
+  ND_ARGS,
+  ND_PARAMS,
   ND_STMTS,
   ND_NUM,
   ND_IDENT,
@@ -72,6 +75,8 @@ typedef struct _node {
   vec_t *stmts;
   vec_t *expr;
   vec_t *funcs;
+  vec_t *args;
+  vec_t *params;
   struct _node *else_stmt;
 
   bool if_else;

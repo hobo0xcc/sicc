@@ -98,6 +98,10 @@ void tokenize(char *s)
       vec_push(tokens, make_token(TK_SEMICOLON, ";", line));
       continue;
     }
+    if (c == ',') {
+      vec_push(tokens, make_token(TK_COMMA, ",", line));
+      continue;
+    }
 
     if (isdigit(c)) {
       buf_t *b = new_buf();
