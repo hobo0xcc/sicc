@@ -1,0 +1,3 @@
+- [ ] Add types of variables. e.g. 'int', 'char', 'void'.
+- [ ] Implement IR phase.
+- [ ] Add pointer type.
