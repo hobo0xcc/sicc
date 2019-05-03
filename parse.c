@@ -208,7 +208,7 @@ static node_t *stmt()
     node->lhs = stmt();
     if (type_equal(peek(0), TK_ELSE)) {
       eat();
-      node->rhs = stmt();
+      node->else_stmt = stmt();
       node->ty = ND_IF_ELSE;
     }
     return node;

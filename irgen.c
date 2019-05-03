@@ -63,13 +63,14 @@ static void gen_stmt(ir_t *ir, node_t *node)
   }
   if (node->ty == ND_ARGS) {
     int len = vec_len(node->args); // Arguments length
-    int arg_stack = 16;
+    int arg_stack = -16;
     for (int i = 0; i < len; i++) {
       node_t *arg = vec_get(node->args, i);
       if (i > 5) {
         int offset = arg_stack;
         map_put(ir->vars, arg->str, (void *)(intptr_t)offset);
-        emit(ir, IR_LOAD_ARG, -offset, i);
+        emit(ir, IR_LOAD_ARG, offset, i);
+        arg_stack -= 8;
       }
       else {
         int offset = alloc_stack(8);
@@ -91,6 +92,25 @@ static void gen_stmt(ir_t *ir, node_t *node)
     int r = gen_ir(ir, node->lhs);
     emit(ir, IR_FREE, stack_size, -1);
     emit(ir, IR_RET, r, -1);
+    return;
+  }
+  if (node->ty == ND_IF) {
+    int r = gen_ir(ir, node->rhs);
+    emit(ir, IR_JTRUE, r, nlabel++);
+    emit(ir, IR_JMP, nlabel++, -1);
+    emit(ir, IR_LABEL, nlabel - 2, -1);
+    gen_ir(ir, node->lhs);
+    emit(ir, IR_LABEL, nlabel - 1, -1);
+    return;
+  }
+  if (node->ty == ND_IF_ELSE) {
+    int r = gen_ir(ir, node->rhs);
+    emit(ir, IR_JTRUE, r, nlabel++);
+    emit(ir, IR_JMP, nlabel++, -1);
+    emit(ir, IR_LABEL, nlabel - 2, -1);
+    gen_ir(ir, node->lhs);
+    emit(ir, IR_LABEL, nlabel - 1, -1);
+    gen_ir(ir, node->else_stmt);
     return;
   }
   
@@ -184,9 +204,9 @@ int gen_ir(ir_t *ir, node_t *node)
   }
   if (node->ty == ND_PARAMS) {
     int len = vec_len(node->params);
-    for (int i = len - 1, a_reg = 0; i >= 0; i--, a_reg++) {
+    for (int i = len - 1; i >= 0; i--) {
       int r = gen_ir(ir, vec_get(node->params, i));
-      emit(ir, IR_STORE_ARG, a_reg, r);
+      emit(ir, IR_STORE_ARG, i, r);
       nreg--;
     }
     return -1;
@@ -261,6 +281,12 @@ void print_ir(ir_t *ir)
         break;
       case IR_REST_REG:
         printf("  rest_reg r%d\n", ins->lhs);
+        break;
+      case IR_JTRUE:
+        printf("  jtrue r%d, .L%d\n", ins->lhs, ins->rhs);
+        break;
+      case IR_JMP:
+        printf("  jmp .L%d\n", ins->lhs);
         break;
       default:
         error("Unknown operator: %d", ins->op);

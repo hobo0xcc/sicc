@@ -67,12 +67,12 @@ void gen_asm(ir_t *ir)
         break;
       case IR_GREAT:
         emit("  cmp %s, %s", regs[lhs], regs[rhs]);
-        emit("  setl al");
+        emit("  setg al");
         emit("  movzx %s, al", regs[lhs]);
         break;
       case IR_LESS:
         emit("  cmp %s, %s", regs[lhs], regs[rhs]);
-        emit("  setg al");
+        emit("  setl al");
         emit("  movzx %s, al", regs[lhs]);
         break;
       case IR_STORE:
@@ -99,8 +99,8 @@ void gen_asm(ir_t *ir)
         emit("  add rsp, %d", lhs);
         break;
       case IR_RET:
-        emit("  pop rbp");
         emit("  mov rax, %s", regs[lhs]);
+        emit("  leave");
         emit("  ret");
         break;
       case IR_SAVE_REG:
@@ -108,6 +108,13 @@ void gen_asm(ir_t *ir)
         break;
       case IR_REST_REG:
         emit("  pop %s", regs[lhs]);
+        break;
+      case IR_JTRUE:
+        emit("  test %s, %s", regs[lhs], regs[lhs]);
+        emit("  jnz .L%d", rhs);
+        break;
+      case IR_JMP:
+        emit("  jmp .L%d", lhs);
         break;
       default:
         error("Unknown IR type: %d", ins->op);

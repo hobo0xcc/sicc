@@ -45,27 +45,29 @@ enum {
 };
 
 enum {
-  IR_MOV_IMM,
-  IR_MOV_RETVAL,
-  IR_STORE_ARG,
-  IR_LOAD_ARG,
-  IR_ADD,
-  IR_SUB,
-  IR_MUL,
-  IR_DIV,
-  IR_GREAT,
-  IR_LESS,
-  IR_STORE,
-  IR_LOAD,
-  IR_CALL,
-  IR_FUNC,
-  IR_LABEL,
-  IR_ALLOC,
-  IR_FREE,
-  IR_RET,
-  IR_RET_NONE,
-  IR_SAVE_REG,
-  IR_REST_REG,
+  IR_MOV_IMM, // Move immediate value to register
+  IR_MOV_RETVAL, // Move return value to register
+  IR_STORE_ARG, // Store arg to var
+  IR_LOAD_ARG, // Load var to arg
+  IR_ADD, // Add
+  IR_SUB, // Subtract
+  IR_MUL, // Multiply
+  IR_DIV, // Divided
+  IR_GREAT, // Greater
+  IR_LESS, // Less
+  IR_STORE, // Store register to var
+  IR_LOAD, // Load var to register
+  IR_CALL, // Call function
+  IR_FUNC, // Function
+  IR_LABEL, // Label
+  IR_ALLOC, // Alloc vars
+  IR_FREE, // Free vars
+  IR_RET, // Return register
+  IR_RET_NONE, // Return none
+  IR_SAVE_REG, // Save register
+  IR_REST_REG, // Restore register
+  IR_JMP, // Jmp
+  IR_JTRUE // Jmp if true(1)
 };
 
 typedef struct _vec {
@@ -98,6 +100,7 @@ typedef struct _node {
   char *str;
   int num;
   int size;
+  struct _node *else_stmt;
   vec_t *stmts;
   vec_t *expr;
   vec_t *funcs;
