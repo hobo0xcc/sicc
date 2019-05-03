@@ -38,10 +38,34 @@ enum {
   ND_IDENT,
   ND_FUNC_CALL,
   ND_EXPR,
-  ND_VAR_ASSIGN,
   ND_RETURN,
   ND_IF,
+  ND_IF_ELSE,
   ND_ELSE,
+};
+
+enum {
+  IR_MOV_IMM,
+  IR_MOV_RETVAL,
+  IR_STORE_ARG,
+  IR_LOAD_ARG,
+  IR_ADD,
+  IR_SUB,
+  IR_MUL,
+  IR_DIV,
+  IR_GREAT,
+  IR_LESS,
+  IR_STORE,
+  IR_LOAD,
+  IR_CALL,
+  IR_FUNC,
+  IR_LABEL,
+  IR_ALLOC,
+  IR_FREE,
+  IR_RET,
+  IR_RET_NONE,
+  IR_SAVE_REG,
+  IR_REST_REG,
 };
 
 typedef struct _vec {
@@ -70,17 +94,32 @@ typedef struct _node {
   int ty;
   struct _node *lhs;
   struct _node *rhs;
+  int op;
   char *str;
   int num;
+  int size;
   vec_t *stmts;
   vec_t *expr;
   vec_t *funcs;
   vec_t *args;
   vec_t *params;
-  struct _node *else_stmt;
-
-  bool if_else;
 } node_t;
+
+typedef struct _ins {
+  int op;
+  int lhs;
+  int rhs;
+
+  char *name;
+} ins_t;
+
+typedef struct _ir {
+  vec_t *code;
+  map_t *vars;
+  vec_t *gfuncs;
+  int len;
+  int stack_size;
+} ir_t;
 
 extern vec_t *tokens;
 extern map_t *vars;
@@ -110,6 +149,7 @@ size_t buf_len(buf_t *b);
 char *buf_str(buf_t *b);
 
 /* debug.c */
+void debug_ir(char *src);
 void debug();
 
 /* tokenize.c */
@@ -119,8 +159,13 @@ void tokenize(char *s);
 node_t *new_node(int ty);
 node_t *parse();
 
+/* irgen.c */
+ir_t *new_ir();
+int gen_ir(ir_t *ir, node_t *node);
+void print_ir(ir_t *ir);
+
 /* asmgen.c */
-void gen_asm(node_t *node);
+void gen_asm(ir_t *ir);
 
 /* error.c */
 void error(const char *fmt, ...);

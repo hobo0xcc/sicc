@@ -14,12 +14,17 @@ int main(int argc, char **argv)
   char *arg = argv[1];
   if (!strcmp(arg, "--debug"))
     debug();
+  else if (!strcmp(arg, "--dump-ir")) {
+    if (argc < 3)
+      return 1;
+    debug_ir(argv[2]);
+    return 0;
+  }
+
   tokenize(arg);
   node_t *node = parse();
-  vars = new_map();
-
-  printf(".intel_syntax noprefix\n");
-  gen_asm(node);
-  
+  ir_t *ir = new_ir();
+  gen_ir(ir, node);
+  gen_asm(ir);
   return 0;
 }

@@ -3,6 +3,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void debug_ir(char *src)
+{
+  tokenize(src);
+  node_t *node = parse();
+  ir_t *ir = new_ir();
+  gen_ir(ir, node);
+  print_ir(ir);
+}
+
 void debug()
 {
   vec_t *v = new_vec();
