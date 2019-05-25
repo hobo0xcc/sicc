@@ -27,6 +27,55 @@ static int check_ident_type(char *str)
   return TK_IDENT;
 }
 
+static char get_escape_char(char c, char **s)
+{
+  if (c == '\\') {
+    if (**s == '0') {
+      *s += 1;
+      return '\0';
+    }
+    else if (**s == 'a') {
+      *s += 1;
+      return '\a';
+    }
+    else if (**s == 'b') {
+      *s += 1;
+      return '\b';
+    }
+    else if (**s == 'f') {
+      *s += 1;
+      return '\f';
+    }
+    else if (**s == 'n') {
+      *s += 1;
+      return '\n';
+    }
+    else if (**s == 'r') {
+      *s += 1;
+      return '\r';
+    }
+    else if (**s == '\t') {
+      *s += 1;
+      return '\t';
+    }
+    else if (**s == '\\') {
+      *s += 1;
+      return '\\';
+    }
+    else if (**s == '\'') {
+      *s += 1;
+      return '\'';
+    }
+    else if (**s == '\"') {
+      *s += 1;
+      return '\"';
+    }
+    else
+      return '\\';
+  }
+  return c;
+}
+
 token_t *make_token(int ty, char *str, int line)
 {
   token_t *tk = malloc(sizeof(token_t));
@@ -102,6 +151,22 @@ void tokenize(char *s)
     }
     if (c == ',') {
       vec_push(tokens, make_token(TK_COMMA, ",", line));
+      continue;
+    }
+    if (c == '\"') {
+      buf_t *b = new_buf();
+      while (*s != '\"')
+        buf_push(b, *s++);
+      s++;
+      vec_push(tokens, make_token(TK_STRING, buf_str(b), line));
+      continue;
+    }
+    if (c == '\'') {
+      char ch = *s++;
+      buf_t *b = new_buf();
+      buf_push(b, get_escape_char(ch, &s));
+      s++;
+      vec_push(tokens, make_token(TK_CHARACTER, buf_str(b), line));
       continue;
     }
 

@@ -27,6 +27,9 @@ enum {
   TK_IF,
   TK_ELSE,
 
+  TK_STRING,
+  TK_CHARACTER,
+
   TK_INT,
   TK_CHAR,
 };
@@ -53,6 +56,8 @@ enum {
   ND_VAR_DEF = 268,
   ND_VAR_DECL = 269,
   ND_DEREF = 270,
+  ND_STRING = 271,
+  ND_CHARACTER = 272,
 };
 
 enum {
@@ -83,6 +88,7 @@ enum {
   IR_LOAD_VAR, // Load var to reg
   IR_LOAD_ADDR,
   IR_LEAVE,
+  IR_LOAD_CONST,
 };
 
 typedef struct _vec {
@@ -150,6 +156,7 @@ typedef struct _ir {
   vec_t *code;
   map_t *vars;
   vec_t *gfuncs;
+  vec_t *const_str;
   int len;
   int stack_size;
 } ir_t;
@@ -185,7 +192,7 @@ char *buf_str(buf_t *b);
 void debug_tokens(vec_t *tokens);
 void debug_node(node_t *node);
 void debug_ir(char *src);
-void debug();
+void debug(char *s);
 
 /* tokenize.c */
 void tokenize(char *s);

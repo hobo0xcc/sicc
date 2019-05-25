@@ -40,19 +40,9 @@ void debug_ir(char *src)
   print_ir(ir);
 }
 
-void debug()
+void debug(char *s)
 {
-  vec_t *v = new_vec();
-  vec_push(v, "a");
-  vec_push(v, "b");
-  printf("%s\n", vec_get(v, 1));
-  map_t *m = new_map();
-  map_put(m, "a", "eax");
-  map_put(m, "b", "edi");
-  printf("%s\n", map_get(m, "a"));
-  buf_t *b = new_buf();
-  buf_push(b, 'a');
-  buf_append(b, "hello");
-  printf("%s\n", buf_str(b));
+  tokenize(s);
+  debug_tokens(tokens);
   exit(0);
 }

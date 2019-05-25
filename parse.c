@@ -116,6 +116,16 @@ static node_t *factor()
       return node;
     }
   }
+  else if (type_equal(peek(0), TK_STRING)) {
+    node_t *node = new_node(ND_STRING);
+    node->str = eat()->str;
+    return node;
+  }
+  else if (type_equal(peek(0), TK_CHARACTER)) {
+    node_t *node = new_node(ND_CHARACTER);
+    node->str = eat()->str;
+    return node;
+  }
   error("Unknown identifier: %s", peek(0)->str);
   return NULL;
 }

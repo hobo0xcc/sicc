@@ -13,7 +13,7 @@ int main(int argc, char **argv)
 
   char *arg = argv[1];
   if (!strcmp(arg, "--debug"))
-    debug();
+    debug(argv[2]);
   else if (!strcmp(arg, "--dump-ir")) {
     if (argc < 3)
       return 1;

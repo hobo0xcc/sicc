@@ -77,6 +77,12 @@ void gen_asm(ir_t *ir)
     emit(".global _%s", vec_get(ir->gfuncs, i));
   }
 
+  int nconsts = vec_len(ir->const_str);
+  for (int i = 0; i < nconsts; i++) {
+    char *s = vec_get(ir->const_str, i);
+    emit(".LC%d:\n  .string \"%s\"", i, s);
+  }
+
   for (int pc = 0; pc < len; pc++) {
     ins_t *ins = vec_get(ir->code, pc);
     int lhs = ins->lhs;
@@ -177,6 +183,9 @@ void gen_asm(ir_t *ir)
       case IR_LEAVE:
         emit("  leave");
         emit("  ret");
+        break;
+      case IR_LOAD_CONST:
+        emit("  lea %s, [rip+.LC%d]", REG(lhs), rhs);
         break;
       default:
         error("Unknown IR type: %d", ins->op);

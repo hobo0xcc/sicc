@@ -13,6 +13,7 @@ ir_t *new_ir()
   ir->code = new_vec();
   ir->vars = new_map();
   ir->gfuncs = new_vec();
+  ir->const_str = new_vec();
   return ir;
 }
 
@@ -282,6 +283,21 @@ int gen_ir(ir_t *ir, node_t *node)
     }
     return -1;
   }
+  if (node->ty == ND_STRING) {
+    vec_push(ir->const_str, node->str);
+    int i = vec_len(ir->const_str) - 1;
+    emit(ir, IR_LOAD_CONST,
+        nreg++, i,
+        node->type->size);
+    return nreg - 1;
+  }
+  
+  if (node->ty == ND_CHARACTER) {
+    emit(ir, IR_MOV_IMM,
+        nreg++, node->num,
+        node->type->size);
+    return nreg - 1;
+  }
 
   gen_stmt(ir, node);
   return -1;
@@ -368,6 +384,8 @@ void print_ir(ir_t *ir)
       case IR_LEAVE:
         printf("  leave\n");
         break;
+      case IR_LOAD_CONST:
+        printf("  load_const r%d, c%d\n", ins->lhs, ins->rhs);
       default:
         error("Unknown operator: %d", ins->op);
     }

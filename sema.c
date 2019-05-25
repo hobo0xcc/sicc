@@ -76,6 +76,15 @@ void sema_walk(node_t *node)
       node->str = node->lhs->str;
       node->type = node->lhs->type->ptr;
       break;
+    case ND_STRING:
+      node->type = new_type(8, TY_PTR);
+      node->type->ptr = map_get(types, "char");
+      node->type->ptr_size = 1;
+      break;
+    case ND_CHARACTER:
+      node->num = *node->str;
+      node->type = map_get(types, "char");
+      break;
     default:
       break;
   }
