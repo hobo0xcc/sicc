@@ -13,6 +13,8 @@ static struct keyword {
   { "return", TK_RETURN },
   { "if", TK_IF },
   { "else", TK_ELSE },
+  { "int", TK_INT },
+  { "char", TK_CHAR },
   { NULL, 0 },
 };
 

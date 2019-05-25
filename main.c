@@ -22,7 +22,9 @@ int main(int argc, char **argv)
   }
 
   tokenize(arg);
+  init_parser();
   node_t *node = parse();
+  sema(node);
   ir_t *ir = new_ir();
   gen_ir(ir, node);
   gen_asm(ir);

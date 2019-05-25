@@ -16,12 +16,21 @@ ir_t *new_ir()
   return ir;
 }
 
-static ins_t *emit(ir_t *ir, int op, int lhs, int rhs)
+var_t *new_var(int offset, int size)
+{
+  var_t *var = calloc(1, sizeof(var_t));
+  var->offset = offset;
+  var->size = size;
+  return var;
+}
+
+static ins_t *emit(ir_t *ir, int op, int lhs, int rhs, int size)
 {
   ins_t *ins = calloc(1, sizeof(ins_t));
   ins->op = op;
   ins->lhs = lhs;
   ins->rhs = rhs;
+  ins->size = size;
   vec_push(ir->code, ins);
   return ins;
 }
@@ -49,13 +58,22 @@ static void gen_stmt(ir_t *ir, node_t *node)
     return;
   }
   if (node->ty == ND_FUNC) {
-    ins_t *func = emit(ir, IR_FUNC, -1, -1);
+    ins_t *func = emit(ir, IR_FUNC, -1, -1, -1);
     vec_push(ir->gfuncs, node->str);
     func->name = node->str;
-    ins_t *stack_alloc = emit(ir, IR_ALLOC, 0, -1);
+    ins_t *stack_alloc = emit(ir, IR_ALLOC, 0, -1, -1);
+#ifdef __APPLE__
+    alloc_stack(4);
+    emit(ir, IR_MOV_IMM, nreg, 0, -1);
+    emit(ir, IR_STORE_VAR, 4, nreg, 4);
+#endif
     gen_stmt(ir, node->rhs);
     gen_stmt(ir, node->lhs);
+    if (stack_size % 16 != 0)
+      stack_size += 16 - (stack_size % 16);
     stack_alloc->lhs = stack_size;
+    emit(ir, IR_FREE, stack_size, -1, -1);
+    emit(ir, IR_LEAVE, -1, -1, -1);
     stack_size = 0;
     cur_stack = 0;
     nreg = 0;
@@ -68,14 +86,18 @@ static void gen_stmt(ir_t *ir, node_t *node)
       node_t *arg = vec_get(node->args, i);
       if (i > 5) {
         int offset = arg_stack;
-        map_put(ir->vars, arg->str, (void *)(intptr_t)offset);
-        emit(ir, IR_LOAD_ARG, offset, i);
-        arg_stack -= 8;
+        var_t *var = new_var(offset, arg->type->size);
+        map_put(ir->vars, arg->str, var);
+        ins_t *ins = emit(ir, IR_LOAD_ARG, offset, i, 
+            arg->type->size);
+        arg_stack -= arg->type->size;
       }
       else {
-        int offset = alloc_stack(8);
-        map_put(ir->vars, arg->str, (void *)(intptr_t)offset);
-        emit(ir, IR_LOAD_ARG, offset, i);
+        int offset = alloc_stack(arg->type->size);
+        var_t *var = new_var(offset, arg->type->size);
+        map_put(ir->vars, arg->str, var);
+        emit(ir, IR_LOAD_ARG, offset, i,
+            arg->type->size);
       }
     }
     return;
@@ -90,27 +112,48 @@ static void gen_stmt(ir_t *ir, node_t *node)
   }
   if (node->ty == ND_RETURN) {
     int r = gen_ir(ir, node->lhs);
-    emit(ir, IR_FREE, stack_size, -1);
-    emit(ir, IR_RET, r, -1);
+    emit(ir, IR_RET, r, -1, -1);
+    nreg--;
     return;
   }
   if (node->ty == ND_IF) {
     int r = gen_ir(ir, node->rhs);
-    emit(ir, IR_JTRUE, r, nlabel++);
-    emit(ir, IR_JMP, nlabel++, -1);
-    emit(ir, IR_LABEL, nlabel - 2, -1);
+    emit(ir, IR_JTRUE, r, nlabel++, -1);
+    nreg--;
+    emit(ir, IR_JMP, nlabel++, -1, -1);
+    emit(ir, IR_LABEL, nlabel - 2, -1, -1);
     gen_ir(ir, node->lhs);
-    emit(ir, IR_LABEL, nlabel - 1, -1);
+    emit(ir, IR_LABEL, nlabel - 1, -1, -1);
     return;
   }
   if (node->ty == ND_IF_ELSE) {
     int r = gen_ir(ir, node->rhs);
-    emit(ir, IR_JTRUE, r, nlabel++);
-    emit(ir, IR_JMP, nlabel++, -1);
-    emit(ir, IR_LABEL, nlabel - 2, -1);
+    emit(ir, IR_JTRUE, r, nlabel++, -1);
+    emit(ir, IR_JMP, nlabel++, -1, -1);
+    emit(ir, IR_LABEL, nlabel - 2, -1, -1);
     gen_ir(ir, node->lhs);
-    emit(ir, IR_LABEL, nlabel - 1, -1);
+    emit(ir, IR_LABEL, nlabel - 1, -1, -1);
     gen_ir(ir, node->else_stmt);
+    return;
+  }
+  if (node->ty == ND_VAR_DEF) {
+    if (map_find(ir->vars, node->str))
+      error("%s is already defined", node->str);
+    int offset = alloc_stack(node->type->size);
+    int r = gen_ir(ir, node->lhs);
+    ins_t *ins = emit(ir, IR_STORE_VAR, offset, r,
+        node->type->size);
+    var_t *var = new_var(offset, ins->size);
+    map_put(ir->vars, node->str, var);
+    nreg--;
+    return;
+  }
+  if (node->ty == ND_VAR_DECL) {
+    if (map_find(ir->vars, node->str))
+      error("%s is already defined", node->str);
+    int offset = alloc_stack(node->type->size);
+    var_t *var = new_var(offset, node->type->size);
+    map_put(ir->vars, node->str, var);
     return;
   }
   
@@ -120,45 +163,63 @@ static void gen_stmt(ir_t *ir, node_t *node)
 static int gen_assign(ir_t *ir, node_t *node, int left, int right)
 {
   if (left == -1) {
-    int offset = alloc_stack(8);
-    map_put(ir->vars,
-        node->lhs->str,
-        (void *)(intptr_t)offset);
-    emit(ir, IR_STORE, offset, right);
-    return nreg;
+    error("%s is not declared", node->lhs->str);
+    return -1;
   }
   else {
-    int offset = (int)(intptr_t)map_get(ir->vars, node->lhs->str);
-    emit(ir, IR_STORE, offset, right);
-    nreg--;
-    return nreg;
+    if (node->lhs->ty == ND_DEREF) {
+      ins_t *ins = emit(ir, IR_STORE, left, right,
+          node->lhs->type->size);
+      nreg--;
+      return nreg;
+    }
+    else if (node->lhs->ty == ND_IDENT) {
+      var_t *var = (var_t *)map_get(ir->vars, node->str);
+      ins_t *ins = emit(ir, IR_STORE_VAR, var->offset, right,
+          node->lhs->type->size);
+      nreg--;
+      return nreg;
+    }
+    else {
+      error("Invalid lvalue type");
+      return -1;
+    }
   }
 }
 
 static int gen_expr(ir_t *ir, node_t *node)
 {
-  int left = gen_ir(ir, node->lhs);
-  int op = node->op;
-  int right = gen_ir(ir, node->rhs);
+  int left;
+  int op;
+  int right;
+  if (node->lhs->ty == ND_DEREF &&
+      node->op == '=') {
+    node_t *ptr_var = node->lhs->lhs;
+    left = gen_ir(ir, ptr_var);
+  } else {
+    left = gen_ir(ir, node->lhs);
+  }
+  op = node->op;
+  right = gen_ir(ir, node->rhs);
 
   switch (op) {
     case '+':
-      emit(ir, IR_ADD, left, right);
+      emit(ir, IR_ADD, left, right, -1);
       break;
     case '-':
-      emit(ir, IR_SUB, left, right);
+      emit(ir, IR_SUB, left, right, -1);
       break;
     case '*':
-      emit(ir, IR_MUL, left, right);
+      emit(ir, IR_MUL, left, right, -1);
       break;
     case '/':
-      emit(ir, IR_DIV, left, right);
+      emit(ir, IR_DIV, left, right, -1);
       break;
     case '>':
-      emit(ir, IR_GREAT, left, right);
+      emit(ir, IR_GREAT, left, right, -1);
       break;
     case '<':
-      emit(ir, IR_LESS, left, right);
+      emit(ir, IR_LESS, left, right, -1);
       break;
     case '=':
       left = gen_assign(ir, node, left, right);
@@ -176,37 +237,47 @@ int gen_ir(ir_t *ir, node_t *node)
     return gen_expr(ir, node);
   }
   if (node->ty == ND_NUM) {
-    emit(ir, IR_MOV_IMM, nreg++, node->num);
+    emit(ir, IR_MOV_IMM, nreg++, node->num,
+        node->type->size);
     return nreg - 1;
   }
   if (node->ty == ND_IDENT) {
     if (map_find(ir->vars, node->str)) {
-      int offset = (int)(intptr_t)map_get(ir->vars, node->str);
-      emit(ir, IR_LOAD, nreg++, offset);
+      var_t *var = (var_t *)map_get(ir->vars, node->str);
+      emit(ir, IR_LOAD_VAR, nreg++, var->offset,
+          var->size);
       return nreg - 1;
     }
     else
       return -1;
   }
+  if (node->ty == ND_DEREF) {
+    int r = gen_ir(ir, node->lhs);
+    emit(ir, IR_LOAD, r, r,
+        node->type->size);
+    return r;
+  }
   if (node->ty == ND_FUNC_CALL) {
     for (int i = 0; i < nreg; i++)
-      emit(ir, IR_SAVE_REG, i, -1);
+      emit(ir, IR_SAVE_REG, i, -1, -1);
     int saved_reg = nreg;
 
     gen_ir(ir, node->rhs);
-    ins_t *ins = emit(ir, IR_CALL, -1, -1);
+    ins_t *ins = emit(ir, IR_CALL, -1, -1, -1);
     ins->name = node->str;
     for (int i = 0; i < saved_reg; i++)
-      emit(ir, IR_REST_REG, i, -1);
+      emit(ir, IR_REST_REG, i, -1, -1);
 
-    emit(ir, IR_MOV_RETVAL, nreg++, -1);
+    emit(ir, IR_MOV_RETVAL, nreg++, -1, -1);
     return nreg - 1;
   }
   if (node->ty == ND_PARAMS) {
     int len = vec_len(node->params);
     for (int i = len - 1; i >= 0; i--) {
-      int r = gen_ir(ir, vec_get(node->params, i));
-      emit(ir, IR_STORE_ARG, i, r);
+      node_t *param = vec_get(node->params, i);
+      int r = gen_ir(ir, param);
+      emit(ir, IR_STORE_ARG, i, r,
+          param->type->size);
       nreg--;
     }
     return -1;
@@ -253,10 +324,10 @@ void print_ir(ir_t *ir)
         printf("  less r%d, r%d\n", ins->lhs, ins->rhs);
         break;
       case IR_STORE:
-        printf("  store v%d, r%d\n", ins->lhs, ins->rhs);
+        printf("  store [r%d], r%d\n", ins->lhs, ins->rhs);
         break;
       case IR_LOAD:
-        printf("  load r%d, v%d\n", ins->lhs, ins->rhs);
+        printf("  load r%d, [r%d]\n", ins->lhs, ins->rhs);
         break;
       case IR_CALL:
         printf("  call %s\n", ins->name);
@@ -287,6 +358,15 @@ void print_ir(ir_t *ir)
         break;
       case IR_JMP:
         printf("  jmp .L%d\n", ins->lhs);
+        break;
+      case IR_STORE_VAR:
+        printf("  store_var v%d, r%d\n", ins->lhs, ins->rhs);
+        break;
+      case IR_LOAD_VAR:
+        printf("  load_var r%d, v%d\n", ins->lhs, ins->rhs);
+        break;
+      case IR_LEAVE:
+        printf("  leave\n");
         break;
       default:
         error("Unknown operator: %d", ins->op);

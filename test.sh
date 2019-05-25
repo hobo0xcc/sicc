@@ -22,10 +22,14 @@ test () {
   fi
 }
 
-test 0 'main() { return 0; }'
-test 15 'main() { a = 10; b = 5; return a + b; }'
-test 4 'one() { return 1; } two() { return 2; } main() { return one() + two() + one(); }'
-test 5 'plus(x, y) { return x + y; } main() { return plus(2, 3); }'
-test 36 'plus(a, b, c, d, e, f, g, h) { return a + b + c + d + e + f + g + h; } main() { return plus(1, 2, 3, 4, 5, 6, 7, 8); }'
-test 1 'main(argc) { return argc; }'
-test 0 'main() { a = 2; b = 5; if (a < b) return 0; else return 1; }'
+test 0 'int main() { return 0; }'
+test 15 'int main() { int a = 10; int b = 5; return a + b; }'
+test 4 'int one() { return 1; } int two() { return 2; } int main() { return one() + two() + one(); }'
+test 5 'int plus(int x, int y) { return x + y; } int main() { return plus(2, 3); }'
+test 1 'int main() { int i = 1; if (i) return 1; return i; }'
+test 2 'int main() { int *a = malloc(4); *a = 2; return *a; }'
+test 0 'int main() { char *str = malloc(6); *str = 65; *(str + 1) = 66; *(str + 2) = 67; *(str + 3) = 68; *(str + 4) = 69; *(str + 5) = 0; printf(str); return 0; }'
+test 0 'char *hello() { char *s = malloc(6); *(s) = 72; *(s+1) = 101; *(s+2) = 108; *(s+3) = 108; *(s+4) = 111; *(s+5) = 0; return s; } int main() { char *str = hello(); printf(str); return 0; }'
+# test 36 'plus(a, b, c, d, e, f, g, h) { return a + b + c + d + e + f + g + h; } main() { return plus(1, 2, 3, 4, 5, 6, 7, 8); }'
+# test 1 'main(argc) { return argc; }'
+# test 0 'main() { a = 2; b = 5; if (a < b) return 0; else return 1; }'
