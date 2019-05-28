@@ -21,7 +21,8 @@ int main(int argc, char **argv)
     return 0;
   }
 
-  tokenize(arg);
+  char *s = read_file(arg);
+  tokenize(s);
   init_parser();
   node_t *node = parse();
   sema(node);

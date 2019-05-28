@@ -4,6 +4,24 @@
 #include <string.h>
 #include <stdarg.h>
 
+char *read_file(char *name)
+{
+  buf_t *s = new_buf();
+  FILE *f = fopen(name, "rb");
+  if (f == NULL)
+    error("Can't open the file: %s", name);
+  size_t size = 0;
+  for (;;) {
+    char buf[4096];
+    int nread = fread(buf, sizeof(char), 4096, f);
+    size += nread;
+    buf_appendn(s, buf, nread);
+    if (nread < 4096)
+      break;
+  }
+  return buf_str(s);
+}
+
 vec_t *new_vec()
 {
   vec_t *v = malloc(sizeof(vec_t));
@@ -143,6 +161,12 @@ void buf_append(buf_t *b, char *str)
 {
   int len = strlen(str);
   for (int i = 0; i < len; i++)
+    buf_push(b, str[i]);
+}
+
+void buf_appendn(buf_t *b, char *str, int n)
+{
+  for (int i = 0; i< n; i++)
     buf_push(b, str[i]);
 }
 

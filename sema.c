@@ -14,6 +14,12 @@ void sema_walk(node_t *node)
       sema_walk(node->lhs);
       free(vars);
       vars = new_map();
+      int stmts_len = vec_len(node->lhs->stmts);
+      node_t *is_ret = vec_get(node->lhs->stmts, stmts_len - 1);
+      if (is_ret->ty == ND_RETURN) {
+        node_t *noret = new_node(ND_NORETURN);
+        vec_push(node->lhs->stmts, noret);
+      }
       break;
     case ND_FUNCS:
       for (int i = 0; i < vec_len(node->funcs); i++) {

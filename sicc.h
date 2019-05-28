@@ -58,6 +58,7 @@ enum {
   ND_DEREF = 270,
   ND_STRING = 271,
   ND_CHARACTER = 272,
+  ND_NORETURN = 273,
 };
 
 enum {
@@ -165,6 +166,8 @@ extern vec_t *tokens;
 extern map_t *types;
 
 /* util.c */
+char *read_file(char *name);
+
 vec_t *new_vec();
 void grow_vec(vec_t *v, int len);
 void vec_push(vec_t *v, void *p);
@@ -185,6 +188,7 @@ buf_t *new_buf();
 void grow_buf(buf_t *b, int len);
 void buf_push(buf_t *b, char c);
 void buf_append(buf_t *b, char *str);
+void buf_appendn(buf_t *b, char *str, int n);
 size_t buf_len(buf_t *b);
 char *buf_str(buf_t *b);
 

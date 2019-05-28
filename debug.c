@@ -17,16 +17,16 @@ void debug_tokens(vec_t *tokens)
 
 void debug_node(node_t *node)
 {
-  if (node->type != NULL) {
-    printf("type: %d\n", node->type->ty);
-    printf("size: %d\n", node->type->size);
-    printf("ptrsize: %d\n", node->type->ptr_size);
-  }
-  switch(node->ty) {
-    CASE(ND_FUNC)
-      
-    END
-  }
+//   if (node->type != NULL) {
+//     printf("type: %d\n", node->type->ty);
+//     printf("size: %d\n", node->type->size);
+//     printf("ptrsize: %d\n", node->type->ptr_size);
+//   }
+//   switch(node->ty) {
+//     CASE(ND_FUNC)
+//       
+//     END
+//   }
 }
 
 void debug_ir(char *src)
@@ -42,7 +42,10 @@ void debug_ir(char *src)
 
 void debug(char *s)
 {
-  tokenize(s);
-  debug_tokens(tokens);
+  char *src = read_file(s);
+  printf("%s\n", src);
   exit(0);
+  // tokenize(s);
+  // debug_tokens(tokens);
+  // exit(0);
 }

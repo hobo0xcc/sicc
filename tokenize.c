@@ -98,7 +98,7 @@ void tokenize(char *s)
       line++;
       continue;
     }
-    if (c == ' ') {
+    if (isspace(c)) {
       continue;
     }
     if (c == '+') {

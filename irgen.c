@@ -6,6 +6,7 @@ static int nreg = 0;
 static int nlabel = 0;
 static int stack_size = 0;
 static int cur_stack = 0;
+static int should_leave = 0;
 
 ir_t *new_ir()
 {
@@ -69,15 +70,20 @@ static void gen_stmt(ir_t *ir, node_t *node)
     emit(ir, IR_STORE_VAR, 4, nreg, 4);
 #endif
     gen_stmt(ir, node->rhs);
-    gen_stmt(ir, node->lhs);
     if (stack_size % 16 != 0)
       stack_size += 16 - (stack_size % 16);
     stack_alloc->lhs = stack_size;
-    emit(ir, IR_FREE, stack_size, -1, -1);
-    emit(ir, IR_LEAVE, -1, -1, -1);
+    gen_stmt(ir, node->lhs);
+    if (should_leave) {
+      emit(ir, IR_FREE, stack_size, -1, -1);
+      emit(ir, IR_LEAVE, -1, -1, -1);
+    }
+    should_leave = 0;
     stack_size = 0;
     cur_stack = 0;
     nreg = 0;
+    free(ir->vars);
+    ir->vars = new_map();
     return;
   }
   if (node->ty == ND_ARGS) {
@@ -113,7 +119,9 @@ static void gen_stmt(ir_t *ir, node_t *node)
   }
   if (node->ty == ND_RETURN) {
     int r = gen_ir(ir, node->lhs);
+    emit(ir, IR_FREE, stack_size, -1, -1);
     emit(ir, IR_RET, r, -1, -1);
+    emit(ir, IR_LEAVE, -1, -1, -1);
     nreg--;
     return;
   }
@@ -130,6 +138,7 @@ static void gen_stmt(ir_t *ir, node_t *node)
   if (node->ty == ND_IF_ELSE) {
     int r = gen_ir(ir, node->rhs);
     emit(ir, IR_JTRUE, r, nlabel++, -1);
+    nreg--;
     emit(ir, IR_JMP, nlabel++, -1, -1);
     emit(ir, IR_LABEL, nlabel - 2, -1, -1);
     gen_ir(ir, node->lhs);
@@ -155,6 +164,10 @@ static void gen_stmt(ir_t *ir, node_t *node)
     int offset = alloc_stack(node->type->size);
     var_t *var = new_var(offset, node->type->size);
     map_put(ir->vars, node->str, var);
+    return;
+  }
+  if (node->ty == ND_NORETURN) {
+    should_leave = 1;
     return;
   }
   
