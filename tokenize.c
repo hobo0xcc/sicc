@@ -114,6 +114,21 @@ void tokenize(char *s)
       continue;
     }
     if (c == '/') {
+      if (*s == '/') {
+        while (*s != '\n')
+          s++;
+        continue;
+      } else if (*s == '*') {
+        while (*s) {
+          s++;
+          if (*s == '*' && *(s + 1) == '/')
+            break;
+        }
+        if (*s == '\0')
+          error("Multiple line comments must be end as '*/'");
+        s += 2; // skip '*' and '/'
+        continue;
+      }
       vec_push(tokens, make_token(TK_SLASH, "/", line));
       continue;
     }

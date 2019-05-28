@@ -154,12 +154,12 @@ typedef struct _var {
 } var_t;
 
 typedef struct _ir {
-  vec_t *code;
-  map_t *vars;
-  vec_t *gfuncs;
-  vec_t *const_str;
-  int len;
-  int stack_size;
+  vec_t *code; // ins_t list
+  map_t *vars; // var_t map
+  vec_t *gfuncs; // char * list
+  vec_t *const_str; // char * list
+  int len; // code length
+  int stack_size; // max stack size in function
 } ir_t;
 
 extern vec_t *tokens;
