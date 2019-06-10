@@ -6,7 +6,6 @@ static int nreg = 0;
 static int nlabel = 0;
 static int stack_size = 0;
 static int cur_stack = 0;
-static int should_leave = 0;
 
 ir_t *new_ir()
 {
@@ -45,6 +44,12 @@ static int alloc_stack(int size)
   return cur_stack;
 }
 
+static int free_stack(int size)
+{
+  cur_stack -= size;
+  return cur_stack;
+}
+
 static void gen_stmt(ir_t *ir, node_t *node);
 static int gen_expr(ir_t *ir, node_t *node);
 static int gen_assign(ir_t *ir, node_t *node, int left, int right);
@@ -74,11 +79,6 @@ static void gen_stmt(ir_t *ir, node_t *node)
       stack_size += 16 - (stack_size % 16);
     stack_alloc->lhs = stack_size;
     gen_stmt(ir, node->lhs);
-    if (should_leave) {
-      emit(ir, IR_FREE, stack_size, -1, -1);
-      emit(ir, IR_LEAVE, -1, -1, -1);
-    }
-    should_leave = 0;
     stack_size = 0;
     cur_stack = 0;
     nreg = 0;
@@ -111,10 +111,21 @@ static void gen_stmt(ir_t *ir, node_t *node)
   }
   if (node->ty == ND_STMTS) {
     int len = vec_len(node->stmts);
+    int init_stack = cur_stack;
+    int init_nvar = map_len(ir->vars) - 1;
     for (int i = 0; i < len; i++) {
       node_t *stmt = vec_get(node->stmts, i);
       gen_ir(ir, stmt);
     }
+    
+    int nvar = map_len(ir->vars) - 1;
+    for (int i = init_nvar; i < nvar; i++) {
+      map_pop(ir->vars);
+    }
+    // int diff = cur_stack - init_stack;
+    // ins->lhs = diff;
+    // free_stack(diff);
+    // emit(ir, IR_FREE, diff, -1, -1);
     return;
   }
   if (node->ty == ND_RETURN) {
@@ -146,6 +157,18 @@ static void gen_stmt(ir_t *ir, node_t *node)
     gen_ir(ir, node->else_stmt);
     return;
   }
+  if (node->ty == ND_WHILE) {
+    int eval = nlabel++;
+    int prog = nlabel++;
+    emit(ir, IR_JMP, eval, -1, -1);
+    emit(ir, IR_LABEL, prog, -1, -1);
+    gen_ir(ir, node->lhs);
+    emit(ir, IR_LABEL, eval, -1, -1);
+    int r = gen_ir(ir, node->rhs);
+    emit(ir, IR_JTRUE, r, prog, -1);
+    nreg--;
+    return;
+  }
   if (node->ty == ND_VAR_DEF) {
     if (map_find(ir->vars, node->str))
       error("%s is already defined", node->str);
@@ -166,10 +189,6 @@ static void gen_stmt(ir_t *ir, node_t *node)
     map_put(ir->vars, node->str, var);
     return;
   }
-  if (node->ty == ND_NORETURN) {
-    should_leave = 1;
-    return;
-  }
   
   error("Not implemented yet: %d", node->ty);
 }
@@ -188,7 +207,7 @@ static int gen_assign(ir_t *ir, node_t *node, int left, int right)
       return nreg;
     }
     else if (node->lhs->ty == ND_IDENT) {
-      var_t *var = (var_t *)map_get(ir->vars, node->str);
+      var_t *var = (var_t *)map_get(ir->vars, node->lhs->str);
       ins_t *ins = emit(ir, IR_STORE_VAR, var->offset, right,
           node->lhs->type->size);
       nreg--;
@@ -263,7 +282,7 @@ int gen_ir(ir_t *ir, node_t *node)
       return nreg - 1;
     }
     else
-      return -1;
+      error("Undefined variable: %s", node->str);
   }
   if (node->ty == ND_DEREF) {
     int r = gen_ir(ir, node->lhs);
@@ -281,7 +300,6 @@ int gen_ir(ir_t *ir, node_t *node)
     ins->name = node->str;
     for (int i = 0; i < saved_reg; i++)
       emit(ir, IR_REST_REG, i, -1, -1);
-
     emit(ir, IR_MOV_RETVAL, nreg++, -1, -1);
     return nreg - 1;
   }
@@ -399,6 +417,7 @@ void print_ir(ir_t *ir)
         break;
       case IR_LOAD_CONST:
         printf("  load_const r%d, c%d\n", ins->lhs, ins->rhs);
+        break;
       default:
         error("Unknown operator: %d", ins->op);
     }

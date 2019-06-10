@@ -24,6 +24,10 @@ test () {
 
 test 0 'test/hello.c'
 test 0 'test/fib.c'
+test 9 'test/test.c'
+test 0 'test/while.c'
+test 10 'test/scope.c'
+# test 0 'test/test.c'
 # test 0 'int main() { return 0; }'
 # test 15 'int main() { int a = 10; int b = 5; return a + b; }'
 # test 4 'int one() { return 1; } int two() { return 2; } int main() { return one() + two() + one(); }'

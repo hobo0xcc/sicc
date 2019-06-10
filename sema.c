@@ -4,9 +4,12 @@
 
 static map_t *gfuncs;
 static map_t *vars;
+static int jump_possible = 0;
+static int save_retval = 0;
 
 void sema_walk(node_t *node)
 {
+  node->flags = calloc(1, sizeof(sema_flag_t));
   switch (node->ty) {
     case ND_FUNC:
       map_put(gfuncs, node->str, node->type);
@@ -14,12 +17,6 @@ void sema_walk(node_t *node)
       sema_walk(node->lhs);
       free(vars);
       vars = new_map();
-      int stmts_len = vec_len(node->lhs->stmts);
-      node_t *is_ret = vec_get(node->lhs->stmts, stmts_len - 1);
-      if (is_ret->ty == ND_RETURN) {
-        node_t *noret = new_node(ND_NORETURN);
-        vec_push(node->lhs->stmts, noret);
-      }
       break;
     case ND_FUNCS:
       for (int i = 0; i < vec_len(node->funcs); i++) {
@@ -37,8 +34,14 @@ void sema_walk(node_t *node)
       }
       break;
     case ND_STMTS:
-      for (int i = 0; i < vec_len(node->stmts); i++) {
-        sema_walk(vec_get(node->stmts, i));
+      {
+        // int size_var = map_len(vars) - 1;
+        for (int i = 0; i < vec_len(node->stmts); i++) {
+          sema_walk(vec_get(node->stmts, i));
+        }
+        // int cur_size_var = map_len(vars) - 1;
+        // for (int i = size_var; i < cur_size_var; i++)
+        //   map_pop(vars);
       }
       break;
     case ND_NUM:
@@ -90,6 +93,11 @@ void sema_walk(node_t *node)
     case ND_CHARACTER:
       node->num = *node->str;
       node->type = map_get(types, "char");
+      break;
+    case ND_WHILE:
+      jump_possible = 1;
+      sema_walk(node->rhs);
+      sema_walk(node->lhs);
       break;
     default:
       break;

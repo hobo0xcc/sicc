@@ -290,6 +290,18 @@ static node_t *stmt()
     }
     return node;
   }
+  else if (type_equal(peek(0), TK_WHILE)) {
+    node_t *node = new_node(ND_WHILE);
+    eat();
+    expect(eat(), "(");
+    node->rhs = assign();
+    expect(eat(), ")");
+    node->lhs = stmt();
+    return node;
+  }
+  else if (type_equal(peek(0), TK_LBRACE)) {
+    return stmts();
+  }
   else if (map_find(types, peek(0)->str)) {
     node_t *node = decl();
     expect(eat(), ";");
@@ -342,7 +354,7 @@ static node_t *function()
     error("function name expected, but got %s", peek(0)->str);
   node->str = eat()->str;
   node_t *args = arguments();
-  node_t *prog = stmts();
+  node_t *prog = stmt();
   node->lhs = prog;
   node->rhs = args;
   return node;

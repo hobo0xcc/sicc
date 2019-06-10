@@ -15,6 +15,7 @@ static struct keyword {
   { "else", TK_ELSE },
   { "int", TK_INT },
   { "char", TK_CHAR },
+  { "while", TK_WHILE },
   { NULL, 0 },
 };
 

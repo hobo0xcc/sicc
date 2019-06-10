@@ -47,6 +47,11 @@ void vec_push(vec_t *v, void *p)
   v->data[v->len++] = p;
 }
 
+void vec_pop(vec_t *v)
+{
+  free(v->data[v->len -= 1]);
+}
+
 void vec_append(vec_t *v, int len, ...)
 {
   va_list ap;
@@ -125,6 +130,13 @@ int map_index(map_t *m, char *key)
       return i;
   }
   return -1;
+}
+
+void map_pop(map_t *m)
+{
+  vec_pop(m->keys);
+  vec_pop(m->items);
+  m->len--;
 }
 
 size_t map_len(map_t *m)

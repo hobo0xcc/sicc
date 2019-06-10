@@ -7,14 +7,14 @@
 #define REG(n) get_reg(n, ins->size)
 #define ARG_REG(n) get_arg_reg(n, ins->size)
 
-static const char *regs[] = { "r10", "r11", "rbx", "r12", "r13", "r14", "r15" };
-static const char *regs_32[] = { "r10d", "r11d", "ebx", "r12d", "r13d", "r14d", "r15d" };
-static const char *regs_16[] = { "r10w", "r11w", "bx", "r12w", "r13w", "r14w", "r15w" };
-static const char *regs_8[] = { "r10b", "r11b", "bl", "r12b", "r13b", "r14b", "r15b" };
+static const char *regs[] = { "r10", "r11", "rbx", "r12", "r13", "r14", "r15", "rax" };
+static const char *regs_32[] = { "r10d", "r11d", "ebx", "r12d", "r13d", "r14d", "r15d", "eax" };
+static const char *regs_16[] = { "r10w", "r11w", "bx", "r12w", "r13w", "r14w", "r15w", "ax" };
+static const char *regs_8[] = { "r10b", "r11b", "bl", "r12b", "r13b", "r14b", "r15b", "al" };
 static const char *arg_regs[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 static const char *arg_regs_32[] = { "edi", "esi", "edx", "ecx", "r8d", "r9d" };
 static const char *arg_regs_16[] = { "di", "si", "dx", "cx", "r8w", "r9w" };
-static const char *arg_regs_8[] = { "bh", "dh", "dl", "cl", "r8l", "r9l" };
+static const char *arg_regs_8[] = { "dil", "sil", "dl", "cl", "r8l", "r9l" };
 
 static void emit(const char *fmt, ...)
 {
@@ -36,7 +36,7 @@ static const char *ptr_size(ins_t *ins)
   else if (ins->size == 8)
     return "qword ptr";
   else
-    error("Too big size: %d op: %d", ins->size, ins->op);
+    error("Undefined size: %d op: %d", ins->size, ins->op);
   return NULL;
 }
 
@@ -50,7 +50,7 @@ static const char *get_reg(int n, int size)
     return regs_32[n];
   if (size == 8)
     return regs[n];
-  error("Too big size: %d", size);
+  error("Undefined size: %d", size);
   return NULL;
 }
 
@@ -148,7 +148,7 @@ void gen_asm(ir_t *ir)
         emit("  mov rbp, rsp");
         break;
       case IR_LABEL:
-        emit("  .L%d:", lhs);
+        emit(".L%d:", lhs);
         break;
       case IR_ALLOC:
         emit("  sub rsp, %d", lhs);

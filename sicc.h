@@ -26,6 +26,7 @@ enum {
   TK_RETURN,
   TK_IF,
   TK_ELSE,
+  TK_WHILE,
 
   TK_STRING,
   TK_CHARACTER,
@@ -58,7 +59,7 @@ enum {
   ND_DEREF = 270,
   ND_STRING = 271,
   ND_CHARACTER = 272,
-  ND_NORETURN = 273,
+  ND_WHILE = 273,
 };
 
 enum {
@@ -122,6 +123,10 @@ typedef struct _type {
   int ptr_size;
 } type_t;
 
+typedef struct _sema_flag {
+  int no_ret_val;
+} sema_flag_t;
+
 typedef struct _node {
   int ty;
   struct _node *lhs;
@@ -137,6 +142,8 @@ typedef struct _node {
   vec_t *funcs;
   vec_t *args;
   vec_t *params;
+
+  sema_flag_t *flags;
 } node_t;
 
 typedef struct _ins {
@@ -171,6 +178,7 @@ char *read_file(char *name);
 vec_t *new_vec();
 void grow_vec(vec_t *v, int len);
 void vec_push(vec_t *v, void *p);
+void vec_pop(vec_t *v);
 void vec_append(vec_t *v, int len, ...);
 void vec_set(vec_t *v, int pos, void *p);
 void *vec_get(vec_t *v, int pos);
@@ -182,6 +190,7 @@ void map_set(map_t *m, char *key, void *item);
 void *map_get(map_t *m, char *key);
 int map_find(map_t *m, char *key);
 int map_index(map_t *m, char *key);
+void map_pop(map_t *m);
 size_t map_len(map_t *m);
 
 buf_t *new_buf();
