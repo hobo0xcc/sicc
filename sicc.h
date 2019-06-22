@@ -1,172 +1,172 @@
 #ifndef SICC_H
 #define SICC_H
 
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 enum {
-  TK_EOF = 256,
-  TK_NUM,
-  TK_IDENT,
-  TK_PLUS,
-  TK_MINUS,
-  TK_ASTERISK,
-  TK_SLASH,
-  TK_ASSIGN,
-  TK_GREATER,
-  TK_LESS,
+    TK_EOF = 256,
+    TK_NUM,
+    TK_IDENT,
+    TK_PLUS,
+    TK_MINUS,
+    TK_ASTERISK,
+    TK_SLASH,
+    TK_ASSIGN,
+    TK_GREATER,
+    TK_LESS,
 
-  TK_LPAREN,
-  TK_RPAREN,
-  TK_LBRACE,
-  TK_RBRACE,
-  TK_SEMICOLON,
-  TK_COMMA,
+    TK_LPAREN,
+    TK_RPAREN,
+    TK_LBRACE,
+    TK_RBRACE,
+    TK_SEMICOLON,
+    TK_COMMA,
 
-  TK_RETURN,
-  TK_IF,
-  TK_ELSE,
-  TK_WHILE,
+    TK_RETURN,
+    TK_IF,
+    TK_ELSE,
+    TK_WHILE,
 
-  TK_STRING,
-  TK_CHARACTER,
+    TK_STRING,
+    TK_CHARACTER,
 
-  TK_INT,
-  TK_CHAR,
+    TK_INT,
+    TK_CHAR,
 };
 
 enum {
-  TY_INT,
-  TY_CHAR,
-  TY_PTR,
+    TY_INT,
+    TY_CHAR,
+    TY_PTR,
 };
 
 enum {
-  ND_FUNC = 256,
-  ND_FUNCS = 257,
-  ND_ARGS = 258,
-  ND_PARAMS = 259,
-  ND_STMTS = 260,
-  ND_NUM = 261,
-  ND_IDENT = 262,
-  ND_FUNC_CALL = 263,
-  ND_EXPR = 264,
-  ND_RETURN = 265,
-  ND_IF = 266,
-  ND_IF_ELSE = 267,
-  ND_VAR_DEF = 268,
-  ND_VAR_DECL = 269,
-  ND_DEREF = 270,
-  ND_STRING = 271,
-  ND_CHARACTER = 272,
-  ND_WHILE = 273,
+    ND_FUNC = 256,
+    ND_FUNCS = 257,
+    ND_ARGS = 258,
+    ND_PARAMS = 259,
+    ND_STMTS = 260,
+    ND_NUM = 261,
+    ND_IDENT = 262,
+    ND_FUNC_CALL = 263,
+    ND_EXPR = 264,
+    ND_RETURN = 265,
+    ND_IF = 266,
+    ND_IF_ELSE = 267,
+    ND_VAR_DEF = 268,
+    ND_VAR_DECL = 269,
+    ND_DEREF = 270,
+    ND_STRING = 271,
+    ND_CHARACTER = 272,
+    ND_WHILE = 273,
 };
 
 enum {
-  IR_MOV_IMM, // Move immediate value to register
-  IR_MOV_RETVAL, // Move return value to register
-  IR_STORE_ARG, // Store
-  IR_LOAD_ARG, // Load
-  IR_ADD, // Add
-  IR_SUB, // Subtract
-  IR_MUL, // Multiply
-  IR_DIV, // Divided
-  IR_GREAT, // Greater
-  IR_LESS, // Less
-  IR_STORE, // Store register to var
-  IR_LOAD, // Load var to register
-  IR_CALL, // Call function
-  IR_FUNC, // Function
-  IR_LABEL, // Label
-  IR_ALLOC, // Alloc vars
-  IR_FREE, // Free vars
-  IR_RET, // Return register
-  IR_RET_NONE, // Return none
-  IR_SAVE_REG, // Save register
-  IR_REST_REG, // Restore register
-  IR_JMP, // Jmp
-  IR_JTRUE, // Jmp if true(1)
-  IR_STORE_VAR, // Store reg to var
-  IR_LOAD_VAR, // Load var to reg
-  IR_LOAD_ADDR,
-  IR_LEAVE,
-  IR_LOAD_CONST,
+    IR_MOV_IMM,    // Move immediate value to register
+    IR_MOV_RETVAL, // Move return value to register
+    IR_STORE_ARG,  // Store
+    IR_LOAD_ARG,   // Load
+    IR_ADD,        // Add
+    IR_SUB,        // Subtract
+    IR_MUL,        // Multiply
+    IR_DIV,        // Divided
+    IR_GREAT,      // Greater
+    IR_LESS,       // Less
+    IR_STORE,      // Store register to var
+    IR_LOAD,       // Load var to register
+    IR_CALL,       // Call function
+    IR_FUNC,       // Function
+    IR_LABEL,      // Label
+    IR_ALLOC,      // Alloc vars
+    IR_FREE,       // Free vars
+    IR_RET,        // Return register
+    IR_RET_NONE,   // Return none
+    IR_SAVE_REG,   // Save register
+    IR_REST_REG,   // Restore register
+    IR_JMP,        // Jmp
+    IR_JTRUE,      // Jmp if true(1)
+    IR_STORE_VAR,  // Store reg to var
+    IR_LOAD_VAR,   // Load var to reg
+    IR_LOAD_ADDR,
+    IR_LEAVE,
+    IR_LOAD_CONST,
 };
 
 typedef struct _vec {
-  int cap, len;
-  void **data;
+    int cap, len;
+    void **data;
 } vec_t;
 
 typedef struct _map {
-  int len;
-  vec_t *keys;
-  vec_t *items;
+    int len;
+    vec_t *keys;
+    vec_t *items;
 } map_t;
 
 typedef struct _buf {
-  int len, cap;
-  char *data;
+    int len, cap;
+    char *data;
 } buf_t;
 
 typedef struct _token {
-  int ty;
-  char *str;
-  int line;
+    int ty;
+    char *str;
+    int line;
 } token_t;
 
 typedef struct _type {
-  int size;
-  struct _type *ptr;
-  int ty;
-  char *name;
-  int ptr_size;
+    int size;
+    struct _type *ptr;
+    int ty;
+    char *name;
+    int ptr_size;
 } type_t;
 
 typedef struct _sema_flag {
-  int no_ret_val;
+    int no_ret_val;
 } sema_flag_t;
 
 typedef struct _node {
-  int ty;
-  struct _node *lhs;
-  struct _node *rhs;
-  int op;
-  char *str;
-  int num;
-  int size;
-  type_t *type;
-  struct _node *else_stmt;
-  vec_t *stmts;
-  vec_t *expr;
-  vec_t *funcs;
-  vec_t *args;
-  vec_t *params;
+    int ty;
+    struct _node *lhs;
+    struct _node *rhs;
+    int op;
+    char *str;
+    int num;
+    int size;
+    type_t *type;
+    struct _node *else_stmt;
+    vec_t *stmts;
+    vec_t *expr;
+    vec_t *funcs;
+    vec_t *args;
+    vec_t *params;
 
-  sema_flag_t *flags;
+    sema_flag_t *flags;
 } node_t;
 
 typedef struct _ins {
-  int op;
-  int lhs;
-  int rhs;
-  
-  int size;
-  char *name;
+    int op;
+    int lhs;
+    int rhs;
+
+    int size;
+    char *name;
 } ins_t;
 
 typedef struct _var {
-  int offset;
-  int size;
+    int offset;
+    int size;
 } var_t;
 
 typedef struct _ir {
-  vec_t *code; // ins_t list
-  map_t *vars; // var_t map
-  vec_t *gfuncs; // char * list
-  vec_t *const_str; // char * list
-  int len; // code length
-  int stack_size; // max stack size in function
+    vec_t *code;      // ins_t list
+    map_t *vars;      // var_t map
+    vec_t *gfuncs;    // char * list
+    vec_t *const_str; // char * list
+    int len;          // code length
+    int stack_size;   // max stack size in function
 } ir_t;
 
 extern vec_t *tokens;
