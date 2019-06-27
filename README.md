@@ -2,7 +2,7 @@
 
 sicc is a handmade c compiler.
 
-sicc aim at self-hosting but it's currently not.
+sicc aims at self-hosting but it's currently not.
 
 # Build
 

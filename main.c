@@ -11,9 +11,10 @@ int main(int argc, char **argv) {
     }
 
     char *arg = argv[1];
-    if (!strcmp(arg, "--debug"))
+    if (!strcmp(arg, "--debug")) {
         debug(argv[2]);
-    else if (!strcmp(arg, "--dump-ir")) {
+        return 0;
+    } else if (!strcmp(arg, "--dump-ir")) {
         if (argc < 3)
             return 1;
         debug_ir(argv[2]);
@@ -21,7 +22,8 @@ int main(int argc, char **argv) {
     }
 
     char *s = read_file(arg);
-    tokenize(s);
+    char *p = preprocess(s);
+    tokenize(p);
     init_parser();
     node_t *node = parse();
     sema(node);

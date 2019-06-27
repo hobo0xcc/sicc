@@ -174,6 +174,7 @@ extern map_t *types;
 
 /* util.c */
 char *read_file(char *name);
+void write_one_fmt(char *dst, char *orig, char *str);
 
 vec_t *new_vec();
 void grow_vec(vec_t *v, int len);
@@ -206,6 +207,11 @@ void debug_tokens(vec_t *tokens);
 void debug_node(node_t *node);
 void debug_ir(char *src);
 void debug(char *s);
+
+/* preprocess.c */
+extern map_t *macros;
+
+char *preprocess(char *s);
 
 /* tokenize.c */
 void tokenize(char *s);

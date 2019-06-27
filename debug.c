@@ -40,10 +40,7 @@ void debug_ir(char *src) {
 }
 
 void debug(char *s) {
-    char *src = read_file(s);
-    printf("%s\n", src);
-    exit(0);
-    // tokenize(s);
-    // debug_tokens(tokens);
-    // exit(0);
+    char *str = read_file(s);
+    char *p = preprocess(str);
+    printf("%s\n", p);
 }

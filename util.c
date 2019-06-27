@@ -21,6 +21,17 @@ char *read_file(char *name) {
     return buf_str(s);
 }
 
+void write_one_fmt(char *dst, char *orig, char *str) {
+    buf_t *b = new_buf();
+    int i;
+    for (i = 0; (orig[i] != '%') && orig[i]; i++) {
+        buf_push(b, orig[i]);
+    }
+    buf_append(b, str);
+    buf_append(b, (orig + (i + 2)));
+    strcpy(dst, buf_str(b));
+}
+
 vec_t *new_vec() {
     vec_t *v = malloc(sizeof(vec_t));
     v->len = 0;
