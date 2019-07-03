@@ -117,6 +117,20 @@ static node_t *unary() {
         node_t *node = new_node(ND_DEREF);
         node->lhs = unary();
         return node;
+    } else if (equal(peek(0), "sizeof")) {
+        eat();
+        if (!equal(peek(0), "(")) {
+            node_t *item = unary();
+            node_t *node = new_node(ND_SIZEOF);
+            node->type = item->type;
+            return node;
+        } else {
+            eat();
+            node_t *node = new_node(ND_SIZEOF);
+            node->type = type();
+            expect(eat(), ")");
+            return node;
+        }
     }
     return factor();
 }
@@ -193,6 +207,10 @@ static node_t *assign() {
     for (;;) {
         if (equal(peek(0), "="))
             op = '=';
+        else if (equal(peek(0), "+="))
+            op = OP_PLUS_ASSIGN;
+        else if (equal(peek(0), "-="))
+            op = OP_MINUS_ASSIGN;
         else
             break;
 

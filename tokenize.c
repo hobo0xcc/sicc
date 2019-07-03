@@ -16,6 +16,7 @@ static struct keyword {
     {"int", TK_INT},
     {"char", TK_CHAR},
     {"while", TK_WHILE},
+    {"sizeof", TK_SIZEOF},
     {NULL, 0},
 };
 
@@ -89,11 +90,27 @@ void tokenize(char *s) {
             continue;
         }
         if (c == '+') {
-            vec_push(tokens, make_token(TK_PLUS, "+", line));
+            if (*s == '=') {
+                vec_push(tokens, make_token(TK_PLUS_ASSIGN, "+=", line));
+                s++;
+            } else if (*s == '+') {
+                vec_push(tokens, make_token(TK_PLUS_PLUS, "++", line));
+                s++;
+            } else {
+                vec_push(tokens, make_token(TK_PLUS, "+", line));
+            }
             continue;
         }
         if (c == '-') {
-            vec_push(tokens, make_token(TK_MINUS, "-", line));
+            if (*s == '=') {
+                vec_push(tokens, make_token(TK_MINUS_ASSIGN, "-=", line));
+                s++;
+            } else if (*s == '-') {
+                vec_push(tokens, make_token(TK_MINUS_MINUS, "--", line));
+                s++;
+            } else {
+                vec_push(tokens, make_token(TK_MINUS, "-", line));
+            }
             continue;
         }
         if (c == '*') {

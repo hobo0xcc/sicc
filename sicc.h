@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-enum {
+enum _token_enum {
     TK_EOF = 256,
     TK_NUM,
     TK_IDENT,
@@ -13,6 +13,10 @@ enum {
     TK_ASTERISK,
     TK_SLASH,
     TK_ASSIGN,
+    TK_PLUS_ASSIGN,
+    TK_MINUS_ASSIGN,
+    TK_PLUS_PLUS,
+    TK_MINUS_MINUS,
     TK_GREATER,
     TK_LESS,
 
@@ -28,6 +32,8 @@ enum {
     TK_ELSE,
     TK_WHILE,
 
+    TK_SIZEOF,
+
     TK_STRING,
     TK_CHARACTER,
 
@@ -35,13 +41,18 @@ enum {
     TK_CHAR,
 };
 
-enum {
+enum _type_enum {
     TY_INT,
     TY_CHAR,
     TY_PTR,
 };
 
-enum {
+enum _op_enum {
+    OP_PLUS_ASSIGN,
+    OP_MINUS_ASSIGN,
+};
+
+enum _node_enum {
     ND_FUNC = 256,
     ND_FUNCS = 257,
     ND_ARGS = 258,
@@ -60,9 +71,10 @@ enum {
     ND_STRING = 271,
     ND_CHARACTER = 272,
     ND_WHILE = 273,
+    ND_SIZEOF = 274,
 };
 
-enum {
+enum _ir_enum {
     IR_MOV_IMM,    // Move immediate value to register
     IR_MOV_RETVAL, // Move return value to register
     IR_STORE_ARG,  // Store
@@ -123,9 +135,9 @@ typedef struct _type {
     int ptr_size;
 } type_t;
 
-typedef struct _sema_flag {
+typedef struct _sema_values {
     int no_ret_val;
-} sema_flag_t;
+} sema_values_t;
 
 typedef struct _node {
     int ty;
@@ -143,7 +155,7 @@ typedef struct _node {
     vec_t *args;
     vec_t *params;
 
-    sema_flag_t *flags;
+    sema_values_t *semv;
 } node_t;
 
 typedef struct _ins {
@@ -153,6 +165,7 @@ typedef struct _ins {
 
     int size;
     char *name;
+    int temp_reg;
 } ins_t;
 
 typedef struct _var {

@@ -18,7 +18,7 @@ static const char *regs_8[] = {"r10b", "r11b", "bl",   "r12b",
 static const char *arg_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 static const char *arg_regs_32[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 static const char *arg_regs_16[] = {"di", "si", "dx", "cx", "r8w", "r9w"};
-static const char *arg_regs_8[] = {"dil", "sil", "dl", "cl", "r8l", "r9l"};
+static const char *arg_regs_8[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
 
 static void emit(const char *fmt, ...) {
     va_list ap;
@@ -134,7 +134,14 @@ void gen_asm(ir_t *ir) {
             emit("  movzx %s, al", regs[lhs]);
             break;
         case IR_STORE:
-            emit("  mov %s [%s], %s", ptr_size(ins), regs[lhs], REG(rhs));
+            if (ins->size > 0) {
+                if (ins->temp_reg > 0)
+                    emit("  mov %s [%s+%d*%s], %s", ptr_size(ins), regs[lhs], ins->size, regs[ins->temp_reg], REG(rhs));
+                else
+                    emit("  mov %s [%s+%d], %s", ptr_size(ins), regs[lhs], ins->size, REG(rhs));
+            } else {
+                emit("  mov %s [%s], %s", ptr_size(ins), regs[lhs], REG(rhs));
+            }
             break;
         case IR_LOAD:
             emit("  mov %s, %s [%s]", REG(lhs), ptr_size(ins), regs[rhs]);

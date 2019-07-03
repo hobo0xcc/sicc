@@ -8,7 +8,7 @@ static int jump_possible = 0;
 static int save_retval = 0;
 
 void sema_walk(node_t *node) {
-    node->flags = calloc(1, sizeof(sema_flag_t));
+//     node->flags = calloc(1, sizeof(sema_flag_t));
     switch (node->ty) {
     case ND_FUNC:
         map_put(gfuncs, node->str, node->type);

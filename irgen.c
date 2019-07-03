@@ -29,6 +29,7 @@ static ins_t *emit(ir_t *ir, int op, int lhs, int rhs, int size) {
     ins->lhs = lhs;
     ins->rhs = rhs;
     ins->size = size;
+    ins->temp_reg = -1;
     vec_push(ir->code, ins);
     return ins;
 }
@@ -209,21 +210,25 @@ static int gen_expr(ir_t *ir, node_t *node) {
     int left;
     int op;
     int right;
-    if (node->lhs->ty == ND_DEREF && node->op == '=') {
-        node_t *ptr_var = node->lhs->lhs;
-        left = gen_ir(ir, ptr_var);
+
+    if (node->lhs->ty == ND_DEREF) {
+        if (node->op == '=') {
+            node_t *ptr_var = node->lhs->lhs;
+            left = gen_ir(ir, ptr_var);
+        }
     } else {
         left = gen_ir(ir, node->lhs);
     }
     op = node->op;
     right = gen_ir(ir, node->rhs);
+    int is_ptr = node->type->ty == TY_PTR;
 
     switch (op) {
     case '+':
         emit(ir, IR_ADD, left, right, -1);
         break;
     case '-':
-        emit(ir, IR_SUB, left, right, -1);
+        emit(ir, IR_SUB, left, right, node->type->ptr_size);
         break;
     case '*':
         emit(ir, IR_MUL, left, right, -1);
@@ -239,6 +244,14 @@ static int gen_expr(ir_t *ir, node_t *node) {
         break;
     case '=':
         left = gen_assign(ir, node, left, right);
+        break;
+    case OP_PLUS_ASSIGN:
+        emit(ir, IR_ADD, left, right, -1);
+        left = gen_assign(ir, node, left, left);
+        break;
+    case OP_MINUS_ASSIGN:
+        emit(ir, IR_SUB, left, right, -1);
+        left = gen_assign(ir, node, left, left);
         break;
     default:
         error("Unknown operator: %d", op);
@@ -300,6 +313,11 @@ int gen_ir(ir_t *ir, node_t *node) {
 
     if (node->ty == ND_CHARACTER) {
         emit(ir, IR_MOV_IMM, nreg++, node->num, node->type->size);
+        return nreg - 1;
+    }
+    
+    if (node->ty == ND_SIZEOF) {
+        emit(ir, IR_MOV_IMM, nreg++, node->type->size, 4);
         return nreg - 1;
     }
 
