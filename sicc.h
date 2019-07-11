@@ -45,6 +45,7 @@ enum _type_enum {
     TY_INT,
     TY_CHAR,
     TY_PTR,
+    TY_STRUCT,
 };
 
 enum _op_enum {
@@ -132,12 +133,8 @@ typedef struct _type {
     struct _type *ptr;
     int ty;
     char *name;
-    int ptr_size;
+    int size_deref;
 } type_t;
-
-typedef struct _sema_values {
-    int no_ret_val;
-} sema_values_t;
 
 typedef struct _node {
     int ty;
@@ -150,12 +147,9 @@ typedef struct _node {
     type_t *type;
     struct _node *else_stmt;
     vec_t *stmts;
-    vec_t *expr;
     vec_t *funcs;
     vec_t *args;
     vec_t *params;
-
-    sema_values_t *semv;
 } node_t;
 
 typedef struct _ins {
@@ -165,7 +159,7 @@ typedef struct _ins {
 
     int size;
     char *name;
-    int temp_reg;
+    int orig_size; // Original size of a pointer
 } ins_t;
 
 typedef struct _var {
@@ -218,7 +212,7 @@ char *buf_str(buf_t *b);
 /* debug.c */
 void debug_tokens(vec_t *tokens);
 void debug_node(node_t *node);
-void debug_ir(char *src);
+void debug_ir(char *filename);
 void debug(char *s);
 
 /* preprocess.c */

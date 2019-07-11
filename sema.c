@@ -3,8 +3,7 @@
 #include <stdlib.h>
 
 static map_t *gfuncs;
-static map_t *vars;
-static int jump_possible = 0;
+static map_t *var_types;
 static int save_retval = 0;
 
 void sema_walk(node_t *node) {
@@ -14,8 +13,8 @@ void sema_walk(node_t *node) {
         map_put(gfuncs, node->str, node->type);
         sema_walk(node->rhs);
         sema_walk(node->lhs);
-        free(vars);
-        vars = new_map();
+        free(var_types);
+        var_types = new_map();
         break;
     case ND_FUNCS:
         for (int i = 0; i < vec_len(node->funcs); i++) {
@@ -45,9 +44,9 @@ void sema_walk(node_t *node) {
         node->type = map_get(types, "int");
         break;
     case ND_IDENT:
-        if (!map_find(vars, node->str))
+        if (!map_find(var_types, node->str))
             error("Can't use not defined variable");
-        node->type = map_get(vars, node->str);
+        node->type = map_get(var_types, node->str);
         break;
     case ND_FUNC_CALL:
         sema_walk(node->rhs);
@@ -71,11 +70,11 @@ void sema_walk(node_t *node) {
         sema_walk(node->else_stmt);
         break;
     case ND_VAR_DEF:
-        map_put(vars, node->str, node->type);
+        map_put(var_types, node->str, node->type);
         sema_walk(node->lhs);
         break;
     case ND_VAR_DECL:
-        map_put(vars, node->str, node->type);
+        map_put(var_types, node->str, node->type);
         break;
     case ND_DEREF:
         sema_walk(node->lhs);
@@ -85,14 +84,13 @@ void sema_walk(node_t *node) {
     case ND_STRING:
         node->type = new_type(8, TY_PTR);
         node->type->ptr = map_get(types, "char");
-        node->type->ptr_size = 1;
+        node->type->size_deref = 1;
         break;
     case ND_CHARACTER:
         node->num = *node->str;
         node->type = map_get(types, "char");
         break;
     case ND_WHILE:
-        jump_possible = 1;
         sema_walk(node->rhs);
         sema_walk(node->lhs);
         break;
@@ -102,7 +100,7 @@ void sema_walk(node_t *node) {
 }
 
 void sema(node_t *node) {
-    vars = new_map();
+    var_types = new_map();
     gfuncs = new_map();
     sema_walk(node);
 }

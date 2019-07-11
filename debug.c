@@ -29,7 +29,9 @@ void debug_node(node_t *node) {
     //   }
 }
 
-void debug_ir(char *src) {
+void debug_ir(char *filename) {
+    char *str = read_file(filename);
+    char *src = preprocess(str);
     tokenize(src);
     init_parser();
     node_t *node = parse();

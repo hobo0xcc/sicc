@@ -6,6 +6,6 @@ int main() {
     *a = 2;
     *(a+1) = 3;
     *(a+2) = 4;
-    printf("%d, %d, %d\n", *(a), *(a + 4), *(a + 8));
+    printf("%d, %d, %d\n", *(a), *(a + 1), *(a + 2));
     return 0;
 }

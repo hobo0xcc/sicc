@@ -226,22 +226,18 @@ static node_t *assign() {
 }
 
 static type_t *type() {
-    // Below code's naming are complicated. TODO: fix those.
-    type_t *ty = calloc(1, sizeof(type_t));
-    char *ty_str = peek(0)->str;
-    type_t *get_ty = (type_t *)map_get(types, ty_str);
-    ty->size = get_ty->size;
+    char *type_name = peek(0)->str;
+    type_t *type = (type_t *)map_get(types, type_name);
     eat();
+
     while (equal(peek(0), "*")) {
         eat();
-        type_t *tmp = calloc(1, sizeof(type_t));
-        tmp->ty = TY_PTR;
-        tmp->ptr = ty;
-        tmp->size = 8;
-        tmp->ptr_size = ty->size;
-        ty = tmp;
+        type_t *ptr_type = new_type(8, TY_PTR);
+        ptr_type->ptr = type;
+        ptr_type->size_deref = type->size;
+        type = ptr_type;
     }
-    return ty;
+    return type;
 }
 
 static node_t *decl() {

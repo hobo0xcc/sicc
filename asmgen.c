@@ -6,6 +6,9 @@
 
 #define REG(n) get_reg(n, ins->size)
 #define ARG_REG(n) get_arg_reg(n, ins->size)
+#define REG_ORIG(n) get_reg(n, ins->orig_size)
+
+#define POINTER_SIZE 8
 
 static const char *regs[] = {"r10", "r11", "rbx", "r12",
                              "r13", "r14", "r15", "rax"};
@@ -89,7 +92,7 @@ void gen_asm(ir_t *ir) {
 
         switch (ins->op) {
         case IR_MOV_IMM:
-            emit("  mov %s, %d", regs[lhs], rhs);
+            emit("  mov %s, %d", REG(lhs), rhs);
             break;
         case IR_MOV_RETVAL:
             emit("  mov %s, rax", regs[lhs]);
@@ -106,7 +109,14 @@ void gen_asm(ir_t *ir) {
                      ARG_REG(rhs));
             break;
         case IR_ADD:
-            emit("  add %s, %s", regs[lhs], regs[rhs]);
+            if (ins->size == POINTER_SIZE) {
+                emit("  mov %s, %s", REG_ORIG(7), REG_ORIG(rhs));
+                emit("  cdqe");
+                emit("  lea %s, [0+rax*%d]", REG(7), ins->orig_size);
+                emit("  add %s, %s", REG(lhs), REG(7));
+            } else {
+                emit("  add %s, %s", REG(lhs), REG(rhs));
+            }
             break;
         case IR_SUB:
             emit("  sub %s, %s", regs[lhs], regs[rhs]);
@@ -134,14 +144,7 @@ void gen_asm(ir_t *ir) {
             emit("  movzx %s, al", regs[lhs]);
             break;
         case IR_STORE:
-            if (ins->size > 0) {
-                if (ins->temp_reg > 0)
-                    emit("  mov %s [%s+%d*%s], %s", ptr_size(ins), regs[lhs], ins->size, regs[ins->temp_reg], REG(rhs));
-                else
-                    emit("  mov %s [%s+%d], %s", ptr_size(ins), regs[lhs], ins->size, REG(rhs));
-            } else {
-                emit("  mov %s [%s], %s", ptr_size(ins), regs[lhs], REG(rhs));
-            }
+            emit("  mov %s [%s], %s", ptr_size(ins), regs[lhs], REG(rhs));
             break;
         case IR_LOAD:
             emit("  mov %s, %s [%s]", REG(lhs), ptr_size(ins), regs[rhs]);

@@ -29,7 +29,7 @@ static ins_t *emit(ir_t *ir, int op, int lhs, int rhs, int size) {
     ins->lhs = lhs;
     ins->rhs = rhs;
     ins->size = size;
-    ins->temp_reg = -1;
+    ins->orig_size = 0;
     vec_push(ir->code, ins);
     return ins;
 }
@@ -66,7 +66,7 @@ static void gen_stmt(ir_t *ir, node_t *node) {
         ins_t *stack_alloc = emit(ir, IR_ALLOC, 0, -1, -1);
 #ifdef __APPLE__
         alloc_stack(4);
-        emit(ir, IR_MOV_IMM, nreg, 0, -1);
+        emit(ir, IR_MOV_IMM, nreg, 0, 4);
         emit(ir, IR_STORE_VAR, 4, nreg, 4);
 #endif
         gen_stmt(ir, node->rhs);
@@ -190,7 +190,8 @@ static int gen_assign(ir_t *ir, node_t *node, int left, int right) {
         return -1;
     } else {
         if (node->lhs->ty == ND_DEREF) {
-            ins_t *ins = emit(ir, IR_STORE, left, right, node->lhs->type->size);
+            ins_t *ins = emit(ir, IR_STORE, left, right,
+                    node->lhs->type->size);
             nreg--;
             return nreg;
         } else if (node->lhs->ty == ND_IDENT) {
@@ -224,11 +225,13 @@ static int gen_expr(ir_t *ir, node_t *node) {
     int is_ptr = node->type->ty == TY_PTR;
 
     switch (op) {
-    case '+':
-        emit(ir, IR_ADD, left, right, -1);
+    case '+': {
+        ins_t *ins = emit(ir, IR_ADD, left, right, node->type->size);
+        ins->orig_size = node->type->size_deref;
         break;
+    }
     case '-':
-        emit(ir, IR_SUB, left, right, node->type->ptr_size);
+        emit(ir, IR_SUB, left, right, node->type->size);
         break;
     case '*':
         emit(ir, IR_MUL, left, right, -1);
@@ -373,7 +376,7 @@ void print_ir(ir_t *ir) {
             printf("func %s:\n", ins->name);
             break;
         case IR_LABEL:
-            printf("  .L%s:\n", ins->name);
+            printf("  .L%d:\n", ins->lhs);
             break;
         case IR_ALLOC:
             printf("  alloc %d\n", ins->lhs);
