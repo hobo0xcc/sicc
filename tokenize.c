@@ -137,8 +137,14 @@ void tokenize(char *s) {
             continue;
         }
         if (c == '=') {
-            vec_push(tokens, make_token(TK_ASSIGN, "=", line));
-            continue;
+            if (*s == '=') {
+                s++;
+                vec_push(tokens, make_token(TK_EQUAL, "==", line));
+                continue;
+            } else {
+                vec_push(tokens, make_token(TK_ASSIGN, "=", line));
+                continue;
+            }
         }
         if (c == '>') {
             vec_push(tokens, make_token(TK_GREATER, ">", line));
@@ -187,6 +193,16 @@ void tokenize(char *s) {
             s++;
             vec_push(tokens, make_token(TK_CHARACTER, buf_str(b), line));
             continue;
+        }
+        if (c == '!') {
+            if (*s == '=') {
+                s++;
+                vec_push(tokens, make_token(TK_NOT_EQUAL, "!=", line));
+                continue;
+            } else {
+                vec_push(tokens, make_token(TK_NOT, "!", line));
+                continue;
+            }
         }
 
         if (isdigit(c)) {

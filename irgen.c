@@ -29,7 +29,6 @@ static ins_t *emit(ir_t *ir, int op, int lhs, int rhs, int size) {
     ins->lhs = lhs;
     ins->rhs = rhs;
     ins->size = size;
-    ins->orig_size = 0;
     vec_push(ir->code, ins);
     return ins;
 }
@@ -222,39 +221,45 @@ static int gen_expr(ir_t *ir, node_t *node) {
     }
     op = node->op;
     right = gen_ir(ir, node->rhs);
-    int is_ptr = node->type->ty == TY_PTR;
+    if (node->type->ty == TY_PTR) {
+        emit(ir, IR_PTR_CAST, right, -1, node->type->size_deref);
+    }
 
     switch (op) {
-    case '+': {
-        ins_t *ins = emit(ir, IR_ADD, left, right, node->type->size);
-        ins->orig_size = node->type->size_deref;
+    case '+':
+        emit(ir, IR_ADD, left, right, node->type->size);
         break;
-    }
     case '-':
         emit(ir, IR_SUB, left, right, node->type->size);
         break;
     case '*':
-        emit(ir, IR_MUL, left, right, -1);
+        emit(ir, IR_MUL, left, right, node->type->size);
         break;
     case '/':
-        emit(ir, IR_DIV, left, right, -1);
+        emit(ir, IR_DIV, left, right, node->type->size);
         break;
     case '>':
-        emit(ir, IR_GREAT, left, right, -1);
+        emit(ir, IR_GREAT, left, right, node->type->size);
         break;
     case '<':
-        emit(ir, IR_LESS, left, right, -1);
+        emit(ir, IR_LESS, left, right, node->type->size);
         break;
     case '=':
         left = gen_assign(ir, node, left, right);
         break;
     case OP_PLUS_ASSIGN:
-        emit(ir, IR_ADD, left, right, -1);
+        emit(ir, IR_ADD, left, right, node->type->size);
         left = gen_assign(ir, node, left, left);
         break;
     case OP_MINUS_ASSIGN:
-        emit(ir, IR_SUB, left, right, -1);
+        emit(ir, IR_SUB, left, right, node->type->size);
         left = gen_assign(ir, node, left, left);
+        break;
+    case OP_EQUAL:
+        emit(ir, IR_EQ, left, right, node->type->size);
+        break;
+    case OP_NOT_EQUAL:
+        emit(ir, IR_NEQ, left, right, node->type->size);
         break;
     default:
         error("Unknown operator: %d", op);

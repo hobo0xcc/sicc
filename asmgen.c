@@ -9,6 +9,7 @@
 #define REG_ORIG(n) get_reg(n, ins->orig_size)
 
 #define POINTER_SIZE 8
+#define AX 7
 
 static const char *regs[] = {"r10", "r11", "rbx", "r12",
                              "r13", "r14", "r15", "rax"};
@@ -80,11 +81,13 @@ void gen_asm(ir_t *ir) {
     }
 
     int nconsts = vec_len(ir->const_str);
+    emit(".section __TEXT,__cstring");
     for (int i = 0; i < nconsts; i++) {
         char *s = vec_get(ir->const_str, i);
-        emit(".LC%d:\n  .string \"%s\"", i, s);
+        emit(".LC%d:\n  .asciz \"%s\"", i, s);
     }
-
+    
+    emit("\n.section __TEXT,__text");
     for (int pc = 0; pc < len; pc++) {
         ins_t *ins = vec_get(ir->code, pc);
         int lhs = ins->lhs;
@@ -109,39 +112,34 @@ void gen_asm(ir_t *ir) {
                      ARG_REG(rhs));
             break;
         case IR_ADD:
-            if (ins->size == POINTER_SIZE) {
-                emit("  mov %s, %s", REG_ORIG(7), REG_ORIG(rhs));
-                emit("  cdqe");
-                emit("  lea %s, [0+rax*%d]", REG(7), ins->orig_size);
-                emit("  add %s, %s", REG(lhs), REG(7));
-            } else {
-                emit("  add %s, %s", REG(lhs), REG(rhs));
-            }
+            emit("  add %s, %s", REG(lhs), REG(rhs));
             break;
         case IR_SUB:
-            emit("  sub %s, %s", regs[lhs], regs[rhs]);
+            emit("  sub %s, %s", REG(lhs), REG(rhs));
             break;
         case IR_MUL:
             emit("  mov rax, %s", regs[lhs]);
             emit("  mul %s", regs[rhs]);
             emit("  add rax, rdx");
-            emit("  mov %s, rax", regs[lhs]);
+            emit("  mov %s, %s", REG(lhs), REG(AX));
             break;
         case IR_DIV:
             emit("  mov rax, %s", regs[lhs]);
             emit("  cqo");
             emit("  div %s", regs[rhs]);
-            emit("  mov %s, rax", regs[lhs]);
+            emit("  mov %s, %s", REG(lhs), REG(AX));
             break;
         case IR_GREAT:
-            emit("  cmp %s, %s", regs[lhs], regs[rhs]);
+            emit("  cmp %s, %s", REG(lhs), REG(rhs));
             emit("  setg al");
-            emit("  movzx %s, al", regs[lhs]);
+            emit("  movzx %s, al", REG(lhs));
+            emit("  mov al, 0");
             break;
         case IR_LESS:
-            emit("  cmp %s, %s", regs[lhs], regs[rhs]);
+            emit("  cmp %s, %s", REG(lhs), REG(rhs));
             emit("  setl al");
-            emit("  movzx %s, al", regs[lhs]);
+            emit("  movzx %s, al", REG(lhs));
+            emit("  mov al, 0");
             break;
         case IR_STORE:
             emit("  mov %s [%s], %s", ptr_size(ins), regs[lhs], REG(rhs));
@@ -196,6 +194,23 @@ void gen_asm(ir_t *ir) {
             break;
         case IR_LOAD_CONST:
             emit("  lea %s, [rip+.LC%d]", REG(lhs), rhs);
+            break;
+        case IR_PTR_CAST:
+            emit("  mov %s, %s", REG(AX), REG(lhs));
+            emit("  cdqe");
+            emit("  lea %s, [0+rax*%d]", regs[lhs], ins->size);
+            break;
+        case IR_EQ:
+            emit("  cmp %s, %s", REG(lhs), REG(rhs));
+            emit("  sete al");
+            emit("  movzx %s, al", REG(lhs));
+            emit("  mov al, 0");
+            break;
+        case IR_NEQ:
+            emit("  cmp %s, %s", REG(lhs), REG(rhs));
+            emit("  setne al");
+            emit("  movzx %s, al", REG(lhs));
+            emit("  mov al, 0");
             break;
         default:
             error("Unknown IR type: %d", ins->op);

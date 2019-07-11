@@ -54,6 +54,7 @@ static node_t *unary();
 static node_t *mul_div();
 static node_t *add_sub();
 static node_t *great_less();
+static node_t *eq_noteq();
 static node_t *assign();
 
 static type_t *type();
@@ -201,8 +202,30 @@ static node_t *great_less() {
     return left;
 }
 
-static node_t *assign() {
+static node_t *eq_noteq() {
     node_t *left = great_less();
+    int op;
+    for (;;) {
+        if (equal(peek(0), "=="))
+            op = OP_EQUAL;
+        else if (equal(peek(0), "!="))
+            op = OP_NOT_EQUAL;
+        else 
+            break;
+
+        node_t *node = new_node(ND_EXPR);
+        eat();
+        node_t *right = great_less();
+        node->lhs = left;
+        node->op = op;
+        node->rhs = right;
+        left = node;
+    }
+    return left;
+}
+
+static node_t *assign() {
+    node_t *left = eq_noteq();
     int op;
     for (;;) {
         if (equal(peek(0), "="))
@@ -216,7 +239,7 @@ static node_t *assign() {
 
         node_t *node = new_node(ND_EXPR);
         eat();
-        node_t *right = great_less();
+        node_t *right = eq_noteq();
         node->lhs = left;
         node->op = op;
         node->rhs = right;
@@ -340,6 +363,7 @@ static node_t *function() {
 }
 
 node_t *parse() {
+    init_parser();
     node_t *node = new_node(ND_FUNCS);
     node->funcs = new_vec();
     while (!type_equal(peek(0), TK_EOF)) {

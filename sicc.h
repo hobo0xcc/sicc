@@ -19,6 +19,9 @@ enum _token_enum {
     TK_MINUS_MINUS,
     TK_GREATER,
     TK_LESS,
+    TK_NOT_EQUAL,
+    TK_EQUAL,
+    TK_NOT,
 
     TK_LPAREN,
     TK_RPAREN,
@@ -51,6 +54,8 @@ enum _type_enum {
 enum _op_enum {
     OP_PLUS_ASSIGN,
     OP_MINUS_ASSIGN,
+    OP_EQUAL,
+    OP_NOT_EQUAL,
 };
 
 enum _node_enum {
@@ -104,6 +109,9 @@ enum _ir_enum {
     IR_LOAD_ADDR,
     IR_LEAVE,
     IR_LOAD_CONST,
+    IR_PTR_CAST,
+    IR_EQ,
+    IR_NEQ,
 };
 
 typedef struct _vec {
@@ -159,7 +167,6 @@ typedef struct _ins {
 
     int size;
     char *name;
-    int orig_size; // Original size of a pointer
 } ins_t;
 
 typedef struct _var {
