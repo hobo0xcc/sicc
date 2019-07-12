@@ -188,7 +188,8 @@ static int gen_assign(ir_t *ir, node_t *node, int left, int right) {
         error("%s is not declared", node->lhs->str);
         return -1;
     } else {
-        if (node->lhs->ty == ND_DEREF) {
+        if (node->lhs->ty == ND_DEREF_LVAL ||
+                node->lhs->ty == ND_DEREF_INDEX_LVAL) {
             ins_t *ins = emit(ir, IR_STORE, left, right,
                     node->lhs->type->size);
             nreg--;
@@ -211,14 +212,7 @@ static int gen_expr(ir_t *ir, node_t *node) {
     int op;
     int right;
 
-    if (node->lhs->ty == ND_DEREF) {
-        if (node->op == '=') {
-            node_t *ptr_var = node->lhs->lhs;
-            left = gen_ir(ir, ptr_var);
-        }
-    } else {
-        left = gen_ir(ir, node->lhs);
-    }
+    left = gen_ir(ir, node->lhs);
     op = node->op;
     right = gen_ir(ir, node->rhs);
     if (node->type->ty == TY_PTR) {
@@ -284,10 +278,29 @@ int gen_ir(ir_t *ir, node_t *node) {
         } else
             error("Undefined variable: %s", node->str);
     }
-    if (node->ty == ND_DEREF) {
+    if (node->ty == ND_DEREF ||
+            node->ty == ND_DEREF_LVAL) {
         int r = gen_ir(ir, node->lhs);
-        emit(ir, IR_LOAD, r, r, node->type->size);
+        if (node->ty == ND_DEREF)
+            emit(ir, IR_LOAD, r, r, node->type->size);
         return r;
+    }
+    if (node->ty == ND_DEREF_INDEX ||
+            node->ty == ND_DEREF_INDEX_LVAL) {
+        int left = gen_ir(ir, node->lhs);
+        int right = gen_ir(ir, node->rhs);
+        int size;
+        int is_left_ptr = 1;
+        if ((size = node->lhs->type->size_deref) == 0) {
+            size = node->rhs->type->size_deref;
+            is_left_ptr = 0;
+        }
+        emit(ir, IR_PTR_CAST, (is_left_ptr ? right : left), -1, size);
+        emit(ir, IR_ADD, left, right, 8);
+        if (node->ty == ND_DEREF_INDEX)
+            emit(ir, IR_LOAD, left, left, size);
+        nreg--;
+        return left;
     }
     if (node->ty == ND_FUNC_CALL) {
         for (int i = 0; i < nreg; i++)

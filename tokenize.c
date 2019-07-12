@@ -204,6 +204,14 @@ void tokenize(char *s) {
                 continue;
             }
         }
+        if (c == '[') {
+            vec_push(tokens, make_token(TK_LBRACKET, "[", line));
+            continue;
+        }
+        if (c == ']') {
+            vec_push(tokens, make_token(TK_RBRACKET, "]", line));
+            continue;
+        }
 
         if (isdigit(c)) {
             buf_t *b = new_buf();

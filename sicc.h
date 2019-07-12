@@ -27,6 +27,8 @@ enum _token_enum {
     TK_RPAREN,
     TK_LBRACE,
     TK_RBRACE,
+    TK_LBRACKET,
+    TK_RBRACKET,
     TK_SEMICOLON,
     TK_COMMA,
 
@@ -78,6 +80,9 @@ enum _node_enum {
     ND_CHARACTER = 272,
     ND_WHILE = 273,
     ND_SIZEOF = 274,
+    ND_DEREF_INDEX = 275,
+    ND_DEREF_LVAL = 276,
+    ND_DEREF_INDEX_LVAL = 277,
 };
 
 enum _ir_enum {

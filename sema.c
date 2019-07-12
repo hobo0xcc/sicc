@@ -56,6 +56,10 @@ void sema_walk(node_t *node) {
         sema_walk(node->lhs);
         sema_walk(node->rhs);
         node->type = node->lhs->type;
+        if (node->lhs->ty == ND_DEREF)
+            node->lhs->ty = ND_DEREF_LVAL;
+        else if (node->lhs->ty == ND_DEREF_INDEX)
+            node->lhs->ty = ND_DEREF_INDEX_LVAL;
         break;
     case ND_RETURN:
         sema_walk(node->lhs);
@@ -77,6 +81,7 @@ void sema_walk(node_t *node) {
         map_put(var_types, node->str, node->type);
         break;
     case ND_DEREF:
+    case ND_DEREF_LVAL:
         sema_walk(node->lhs);
         node->str = node->lhs->str;
         node->type = node->lhs->type->ptr;
@@ -93,6 +98,18 @@ void sema_walk(node_t *node) {
     case ND_WHILE:
         sema_walk(node->rhs);
         sema_walk(node->lhs);
+        break;
+    case ND_DEREF_INDEX:
+    case ND_DEREF_INDEX_LVAL:
+        sema_walk(node->lhs);
+        sema_walk(node->rhs);
+        int is_left_ptr = 1;
+        if (node->lhs->type->size_deref == 0)
+            is_left_ptr = 0;
+        if (node->lhs->type->size_deref == 0 &&
+                node->rhs->type->size_deref == 0)
+            error("index is only to use in pointer and array");
+        node->type = (is_left_ptr ? node->lhs->type->ptr : node->rhs->type->ptr);
         break;
     default:
         break;

@@ -49,13 +49,14 @@ void init_parser() {
 }
 
 static node_t *params();
-static node_t *factor();
+static node_t *primary();
+static node_t *postfix();
 static node_t *unary();
-static node_t *mul_div();
-static node_t *add_sub();
-static node_t *great_less();
-static node_t *eq_noteq();
-static node_t *assign();
+static node_t *mul_expr();
+static node_t *add_expr();
+static node_t *relation_expr();
+static node_t *equal_expr();
+static node_t *assign_expr();
 
 static type_t *type();
 static node_t *decl();
@@ -69,7 +70,7 @@ static node_t *params() {
     node->params = new_vec();
     expect(eat(), "(");
     while (!equal(peek(0), ")")) {
-        vec_push(node->params, assign());
+        vec_push(node->params, assign_expr());
         if (equal(peek(0), ")"))
             break;
         expect(eat(), ",");
@@ -78,10 +79,10 @@ static node_t *params() {
     return node;
 }
 
-static node_t *factor() {
+static node_t *primary() {
     if (equal(peek(0), "(")) {
         eat();
-        node_t *expr = assign();
+        node_t *expr = assign_expr();
         expect(eat(), ")");
         return expr;
     } else if (type_equal(peek(0), TK_NUM)) {
@@ -89,16 +90,9 @@ static node_t *factor() {
         node->num = atoi(eat()->str);
         return node;
     } else if (type_equal(peek(0), TK_IDENT)) {
-        if (equal(peek(1), "(")) {
-            node_t *node = new_node(ND_FUNC_CALL);
-            node->str = eat()->str;
-            node->rhs = params();
-            return node;
-        } else {
-            node_t *node = new_node(ND_IDENT);
-            node->str = eat()->str;
-            return node;
-        }
+        node_t *node = new_node(ND_IDENT);
+        node->str = eat()->str;
+        return node;
     } else if (type_equal(peek(0), TK_STRING)) {
         node_t *node = new_node(ND_STRING);
         node->str = eat()->str;
@@ -110,6 +104,26 @@ static node_t *factor() {
     }
     error("Unknown identifier: %s", peek(0)->str);
     return NULL;
+}
+
+static node_t *postfix() {
+    node_t *prim = primary();
+    if (equal(peek(0), "[")) {
+        eat();
+        node_t *node = new_node(ND_DEREF_INDEX);
+        node_t *expr = assign_expr();
+        node->lhs = prim;
+        node->rhs = expr;
+        expect(eat(), "]");
+        return node;
+    } else if (equal(peek(0), "(")) {
+        node_t *node = new_node(ND_FUNC_CALL);
+        node->str = prim->str;
+        node->rhs = params();
+        return node;
+    }
+
+    return prim;
 }
 
 static node_t *unary() {
@@ -133,10 +147,10 @@ static node_t *unary() {
             return node;
         }
     }
-    return factor();
+    return postfix();
 }
 
-static node_t *mul_div() {
+static node_t *mul_expr() {
     node_t *left = unary();
     int op;
     for (;;) {
@@ -158,8 +172,8 @@ static node_t *mul_div() {
     return left;
 }
 
-static node_t *add_sub() {
-    node_t *left = mul_div();
+static node_t *add_expr() {
+    node_t *left = mul_expr();
     int op;
     for (;;) {
         if (equal(peek(0), "+"))
@@ -171,7 +185,7 @@ static node_t *add_sub() {
 
         node_t *node = new_node(ND_EXPR);
         eat();
-        node_t *right = mul_div();
+        node_t *right = mul_expr();
         node->lhs = left;
         node->op = op;
         node->rhs = right;
@@ -180,8 +194,8 @@ static node_t *add_sub() {
     return left;
 }
 
-static node_t *great_less() {
-    node_t *left = add_sub();
+static node_t *relation_expr() {
+    node_t *left = add_expr();
     int op;
     for (;;) {
         if (equal(peek(0), ">"))
@@ -193,7 +207,7 @@ static node_t *great_less() {
 
         node_t *node = new_node(ND_EXPR);
         eat();
-        node_t *right = add_sub();
+        node_t *right = add_expr();
         node->lhs = left;
         node->op = op;
         node->rhs = right;
@@ -202,8 +216,8 @@ static node_t *great_less() {
     return left;
 }
 
-static node_t *eq_noteq() {
-    node_t *left = great_less();
+static node_t *equal_expr() {
+    node_t *left = relation_expr();
     int op;
     for (;;) {
         if (equal(peek(0), "=="))
@@ -215,7 +229,7 @@ static node_t *eq_noteq() {
 
         node_t *node = new_node(ND_EXPR);
         eat();
-        node_t *right = great_less();
+        node_t *right = relation_expr();
         node->lhs = left;
         node->op = op;
         node->rhs = right;
@@ -224,8 +238,8 @@ static node_t *eq_noteq() {
     return left;
 }
 
-static node_t *assign() {
-    node_t *left = eq_noteq();
+static node_t *assign_expr() {
+    node_t *left = equal_expr();
     int op;
     for (;;) {
         if (equal(peek(0), "="))
@@ -239,7 +253,7 @@ static node_t *assign() {
 
         node_t *node = new_node(ND_EXPR);
         eat();
-        node_t *right = eq_noteq();
+        node_t *right = equal_expr();
         node->lhs = left;
         node->op = op;
         node->rhs = right;
@@ -274,7 +288,7 @@ static node_t *decl() {
         return node;
     }
     expect(eat(), "=");
-    node->lhs = assign();
+    node->lhs = assign_expr();
     return node;
 }
 
@@ -282,14 +296,14 @@ static node_t *stmt() {
     if (type_equal(peek(0), TK_RETURN)) {
         eat();
         node_t *node = new_node(ND_RETURN);
-        node->lhs = assign();
+        node->lhs = assign_expr();
         expect(eat(), ";");
         return node;
     } else if (type_equal(peek(0), TK_IF)) {
         eat();
         node_t *node = new_node(ND_IF);
         expect(eat(), "(");
-        node->rhs = assign();
+        node->rhs = assign_expr();
         expect(eat(), ")");
         node->lhs = stmt();
         if (type_equal(peek(0), TK_ELSE)) {
@@ -302,7 +316,7 @@ static node_t *stmt() {
         node_t *node = new_node(ND_WHILE);
         eat();
         expect(eat(), "(");
-        node->rhs = assign();
+        node->rhs = assign_expr();
         expect(eat(), ")");
         node->lhs = stmt();
         return node;
@@ -313,7 +327,7 @@ static node_t *stmt() {
         expect(eat(), ";");
         return node;
     } else {
-        node_t *node = assign();
+        node_t *node = assign_expr();
         expect(eat(), ";");
         return node;
     }
