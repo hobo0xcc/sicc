@@ -51,6 +51,8 @@ enum _type_enum {
     TY_CHAR,
     TY_PTR,
     TY_STRUCT,
+    TY_ARRAY,
+    TY_ARRAY_NOSIZE,
 };
 
 enum _op_enum {
@@ -83,6 +85,8 @@ enum _node_enum {
     ND_DEREF_INDEX = 275,
     ND_DEREF_LVAL = 276,
     ND_DEREF_INDEX_LVAL = 277,
+    ND_IDENT_LVAL = 278,
+    ND_INITIALIZER = 279,
 };
 
 enum _ir_enum {
@@ -105,8 +109,8 @@ enum _ir_enum {
     IR_FREE,       // Free vars
     IR_RET,        // Return register
     IR_RET_NONE,   // Return none
-    IR_SAVE_REG,   // Save register
-    IR_REST_REG,   // Restore register
+    // IR_SAVE_REG,      Save register
+    // IR_REST_REG,      Restore register
     IR_JMP,        // Jmp
     IR_JTRUE,      // Jmp if true(1)
     IR_STORE_VAR,  // Store reg to var
@@ -117,6 +121,7 @@ enum _ir_enum {
     IR_PTR_CAST,
     IR_EQ,
     IR_NEQ,
+    IR_LOAD_ADDR_VAR,
 };
 
 typedef struct _vec {
@@ -141,12 +146,19 @@ typedef struct _token {
     int line;
 } token_t;
 
+
+typedef struct _type_info {
+    int size;
+    int ty;
+} type_info_t;
+
 typedef struct _type {
     int size;
     struct _type *ptr;
     int ty;
     char *name;
     int size_deref;
+    int array_size;
 } type_t;
 
 typedef struct _node {
@@ -163,6 +175,7 @@ typedef struct _node {
     vec_t *funcs;
     vec_t *args;
     vec_t *params;
+    vec_t *initializer;
 } node_t;
 
 typedef struct _ins {

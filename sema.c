@@ -56,9 +56,14 @@ void sema_walk(node_t *node) {
         sema_walk(node->lhs);
         sema_walk(node->rhs);
         node->type = node->lhs->type;
-        if (node->lhs->ty == ND_DEREF)
+        if (node->lhs->ty == ND_IDENT &&
+                node->op == '=')
+            node->lhs->ty = ND_IDENT_LVAL;
+        else if (node->lhs->ty == ND_DEREF &&
+                node->op == '=')
             node->lhs->ty = ND_DEREF_LVAL;
-        else if (node->lhs->ty == ND_DEREF_INDEX)
+        else if (node->lhs->ty == ND_DEREF_INDEX &&
+                node->op == '=')
             node->lhs->ty = ND_DEREF_INDEX_LVAL;
         break;
     case ND_RETURN:
@@ -76,9 +81,22 @@ void sema_walk(node_t *node) {
     case ND_VAR_DEF:
         map_put(var_types, node->str, node->type);
         sema_walk(node->lhs);
+        if (node->type->ty == TY_ARRAY_NOSIZE) {
+            if (node->lhs->ty != ND_INITIALIZER) {
+                error("An array without size requires initializer");
+            } else {
+                node->type->array_size = 
+                    vec_len(node->lhs->initializer);
+                node->type->size *= node->type->array_size;
+                node->type->ty = TY_ARRAY;
+            }
+        }
         break;
     case ND_VAR_DECL:
         map_put(var_types, node->str, node->type);
+        if (node->type->ty == TY_ARRAY_NOSIZE) {
+            error("An array without size requires initializer");
+        }
         break;
     case ND_DEREF:
     case ND_DEREF_LVAL:
@@ -103,6 +121,8 @@ void sema_walk(node_t *node) {
     case ND_DEREF_INDEX_LVAL:
         sema_walk(node->lhs);
         sema_walk(node->rhs);
+        if (node->lhs->ty == ND_IDENT)
+            node->lhs->ty = ND_IDENT_LVAL;
         int is_left_ptr = 1;
         if (node->lhs->type->size_deref == 0)
             is_left_ptr = 0;
@@ -110,6 +130,11 @@ void sema_walk(node_t *node) {
                 node->rhs->type->size_deref == 0)
             error("index is only to use in pointer and array");
         node->type = (is_left_ptr ? node->lhs->type->ptr : node->rhs->type->ptr);
+        break;
+    case ND_INITIALIZER:
+        for (int i = 0; i < node->initializer->len; i++) {
+            sema_walk(vec_get(node->initializer, i));
+        }
         break;
     default:
         break;

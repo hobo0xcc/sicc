@@ -5,11 +5,20 @@
 
 static int cur = 0;
 
-map_t *types;
+map_t *types; // type_info_t map
+
+static type_info_t *new_type_info(int size, int ty) {
+    type_info_t *tyinfo = calloc(1, sizeof(type_info_t));
+    tyinfo->size = size;
+    tyinfo->ty = ty;
+    return tyinfo;
+}
 
 static token_t *peek(int offset) { return vec_get(tokens, cur + offset); }
 
 static token_t *eat() { return vec_get(tokens, cur++); }
+
+static int lineno(token_t *tk) { return tk->line; }
 
 static int equal(token_t *tk, char *str) {
     if (!strcmp(tk->str, str))
@@ -44,8 +53,8 @@ type_t *new_type(int size, int ty) {
 
 void init_parser() {
     types = new_map();
-    map_put(types, "int", new_type(4, TY_INT));
-    map_put(types, "char", new_type(1, TY_CHAR));
+    map_put(types, "int", new_type_info(4, TY_INT));
+    map_put(types, "char", new_type_info(1, TY_CHAR));
 }
 
 static node_t *params();
@@ -59,6 +68,7 @@ static node_t *equal_expr();
 static node_t *assign_expr();
 
 static type_t *type();
+static node_t *init();
 static node_t *decl();
 static node_t *stmt();
 static node_t *stmts();
@@ -264,7 +274,8 @@ static node_t *assign_expr() {
 
 static type_t *type() {
     char *type_name = peek(0)->str;
-    type_t *type = (type_t *)map_get(types, type_name);
+    type_info_t *info = (type_info_t *)map_get(types, type_name);
+    type_t *type = new_type(info->size, info->ty);
     eat();
 
     while (equal(peek(0), "*")) {
@@ -277,18 +288,59 @@ static type_t *type() {
     return type;
 }
 
+static node_t *init() {
+    if (equal(peek(0), "{")) {
+        eat();
+        node_t *node = new_node(ND_INITIALIZER);
+        node->initializer = new_vec();
+        while (!equal(peek(0), "}")) {
+            node_t *nexpr = assign_expr();
+            vec_push(node->initializer, nexpr);
+            if (!equal(peek(0), ","))
+                break;
+            else
+                eat();
+        }
+        expect(eat(), "}");
+        return node;
+    } else {
+        return assign_expr();
+    }
+}
+
 static node_t *decl() {
     node_t *node = new_node(ND_VAR_DEF);
     node->type = type();
     if (!type_equal(peek(0), TK_IDENT))
         error("Var name expected but got %s", peek(0)->str);
     node->str = eat()->str;
+    if (equal(peek(0), "[")) {
+        eat();
+        if (equal(peek(0), "]")) {
+            type_t *array_elem = node->type;
+            node->type = new_type(array_elem->size, TY_ARRAY_NOSIZE);
+            node->type->size_deref = array_elem->size;
+            node->type->ptr = array_elem;
+            eat();
+        } else {
+            type_t *array_elem = node->type;
+            node_t *expr = assign_expr();
+            if (expr->ty != ND_NUM)
+                error("Specify an array size with expr is not implemented yet");
+            int size = array_elem->size;
+            node->type = new_type(size, TY_ARRAY);
+            node->type->size_deref = array_elem->size;
+            node->type->array_size = expr->num;
+            node->type->ptr = array_elem;
+            expect(eat(), "]");
+        }
+    }
     if (!equal(peek(0), "=")) {
         node->ty = ND_VAR_DECL;
         return node;
     }
     expect(eat(), "=");
-    node->lhs = assign_expr();
+    node->lhs = init();
     return node;
 }
 

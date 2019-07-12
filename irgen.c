@@ -45,9 +45,28 @@ static int free_stack(int size) {
     return cur_stack;
 }
 
+static var_t *gen_initializer(ir_t *ir, node_t *node, 
+        type_t *array_ty, int offset);
 static void gen_stmt(ir_t *ir, node_t *node);
 static int gen_expr(ir_t *ir, node_t *node);
 static int gen_assign(ir_t *ir, node_t *node, int left, int right);
+
+static var_t *gen_initializer(ir_t *ir, node_t *node, 
+        type_t *array_ty, int offset) {
+    int elem_size = array_ty->size_deref;
+    int elem_offset = offset;
+    int elem_len = array_ty->array_size;
+    for (int i = 0; i < elem_len; i++, elem_offset -= elem_size) {
+        node_t *expr = vec_get(node->initializer, i);
+        int r = gen_ir(ir, expr);
+        emit(ir, IR_STORE_VAR, elem_offset, r, elem_size);
+        nreg--;
+    }
+    
+    var_t *var = new_var(offset, array_ty->size * array_ty->array_size);
+    return var;
+}
+
 
 static void gen_stmt(ir_t *ir, node_t *node) {
     if (node->ty == ND_FUNCS) {
@@ -164,9 +183,21 @@ static void gen_stmt(ir_t *ir, node_t *node) {
         if (map_find(ir->vars, node->str))
             error("%s is already defined", node->str);
         int offset = alloc_stack(node->type->size);
-        int r = gen_ir(ir, node->lhs);
-        ins_t *ins = emit(ir, IR_STORE_VAR, offset, r, node->type->size);
-        var_t *var = new_var(offset, ins->size);
+        int r;
+        if (node->lhs->ty == ND_INITIALIZER) {
+            if (node->type->ty != TY_ARRAY) {
+                error("Initializer is only to use to an array");
+            } else {
+                var_t *var = gen_initializer(ir, node->lhs, node->type, offset);
+                map_put(ir->vars, node->str, var);
+            }
+            return;
+        } else {
+            r = gen_ir(ir, node->lhs);
+        }
+
+        emit(ir, IR_STORE_VAR, offset, r, node->type->size);
+        var_t *var = new_var(offset, node->type->size);
         map_put(ir->vars, node->str, var);
         nreg--;
         return;
@@ -190,14 +221,15 @@ static int gen_assign(ir_t *ir, node_t *node, int left, int right) {
     } else {
         if (node->lhs->ty == ND_DEREF_LVAL ||
                 node->lhs->ty == ND_DEREF_INDEX_LVAL) {
-            ins_t *ins = emit(ir, IR_STORE, left, right,
+            emit(ir, IR_STORE, left, right,
                     node->lhs->type->size);
             nreg--;
             return nreg;
-        } else if (node->lhs->ty == ND_IDENT) {
-            var_t *var = (var_t *)map_get(ir->vars, node->lhs->str);
-            ins_t *ins = emit(ir, IR_STORE_VAR, var->offset, right,
-                              node->lhs->type->size);
+        } else if (node->lhs->ty == ND_IDENT_LVAL) {
+            emit(ir, IR_STORE, left, right, node->lhs->type->size);
+            // var_t *var = (var_t *)map_get(ir->vars, node->lhs->str);
+            // ins_t *ins = emit(ir, IR_STORE_VAR, var->offset, right,
+            //                   node->lhs->type->size);
             nreg--;
             return nreg;
         } else {
@@ -215,7 +247,8 @@ static int gen_expr(ir_t *ir, node_t *node) {
     left = gen_ir(ir, node->lhs);
     op = node->op;
     right = gen_ir(ir, node->rhs);
-    if (node->type->ty == TY_PTR) {
+    if (node->type->ty == TY_PTR ||
+            node->type->ty == TY_ARRAY) {
         emit(ir, IR_PTR_CAST, right, -1, node->type->size_deref);
     }
 
@@ -270,10 +303,14 @@ int gen_ir(ir_t *ir, node_t *node) {
         emit(ir, IR_MOV_IMM, nreg++, node->num, node->type->size);
         return nreg - 1;
     }
-    if (node->ty == ND_IDENT) {
+    if (node->ty == ND_IDENT ||
+            node->ty == ND_IDENT_LVAL) {
         if (map_find(ir->vars, node->str)) {
             var_t *var = (var_t *)map_get(ir->vars, node->str);
-            emit(ir, IR_LOAD_VAR, nreg++, var->offset, var->size);
+            if (node->ty == ND_IDENT)
+                emit(ir, IR_LOAD_VAR, nreg++, var->offset, var->size);
+            else
+                emit(ir, IR_LOAD_ADDR_VAR, nreg++, var->offset, var->size);
             return nreg - 1;
         } else
             error("Undefined variable: %s", node->str);
@@ -303,15 +340,9 @@ int gen_ir(ir_t *ir, node_t *node) {
         return left;
     }
     if (node->ty == ND_FUNC_CALL) {
-        for (int i = 0; i < nreg; i++)
-            emit(ir, IR_SAVE_REG, i, -1, -1);
-        int saved_reg = nreg;
-
         gen_ir(ir, node->rhs);
         ins_t *ins = emit(ir, IR_CALL, -1, -1, -1);
         ins->name = node->str;
-        for (int i = 0; i < saved_reg; i++)
-            emit(ir, IR_REST_REG, i, -1, -1);
         emit(ir, IR_MOV_RETVAL, nreg++, -1, -1);
         return nreg - 1;
     }
@@ -404,12 +435,6 @@ void print_ir(ir_t *ir) {
             break;
         case IR_RET:
             printf("  ret r%d\n", ins->lhs);
-            break;
-        case IR_SAVE_REG:
-            printf("  save_reg r%d\n", ins->lhs);
-            break;
-        case IR_REST_REG:
-            printf("  rest_reg r%d\n", ins->lhs);
             break;
         case IR_JTRUE:
             printf("  jtrue r%d, .L%d\n", ins->lhs, ins->rhs);

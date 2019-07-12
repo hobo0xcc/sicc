@@ -118,7 +118,10 @@ int map_index(map_t *m, char *key) {
     if (key == NULL)
         return -1;
     for (int i = 0; i < m->len; i++) {
-        if (!strcmp(vec_get(m->keys, i), key))
+        char *s;
+        if ((s = vec_get(m->keys, i)) == NULL)
+            return -1;
+        if (!strcmp(s, key))
             return i;
     }
     return -1;
