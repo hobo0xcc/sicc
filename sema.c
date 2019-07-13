@@ -7,7 +7,7 @@ static map_t *var_types;
 static int save_retval = 0;
 
 void sema_walk(node_t *node) {
-//     node->flags = calloc(1, sizeof(sema_flag_t));
+    //     node->flags = calloc(1, sizeof(sema_flag_t));
     switch (node->ty) {
     case ND_FUNC:
         map_put(gfuncs, node->str, node->type);
@@ -56,14 +56,11 @@ void sema_walk(node_t *node) {
         sema_walk(node->lhs);
         sema_walk(node->rhs);
         node->type = node->lhs->type;
-        if (node->lhs->ty == ND_IDENT &&
-                node->op == '=')
+        if (node->lhs->ty == ND_IDENT && node->op == '=')
             node->lhs->ty = ND_IDENT_LVAL;
-        else if (node->lhs->ty == ND_DEREF &&
-                node->op == '=')
+        else if (node->lhs->ty == ND_DEREF && node->op == '=')
             node->lhs->ty = ND_DEREF_LVAL;
-        else if (node->lhs->ty == ND_DEREF_INDEX &&
-                node->op == '=')
+        else if (node->lhs->ty == ND_DEREF_INDEX && node->op == '=')
             node->lhs->ty = ND_DEREF_INDEX_LVAL;
         break;
     case ND_RETURN:
@@ -85,8 +82,7 @@ void sema_walk(node_t *node) {
             if (node->lhs->ty != ND_INITIALIZER) {
                 error("An array without size requires initializer");
             } else {
-                node->type->array_size = 
-                    vec_len(node->lhs->initializer);
+                node->type->array_size = vec_len(node->lhs->initializer);
                 node->type->size *= node->type->array_size;
                 node->type->ty = TY_ARRAY;
             }
@@ -127,9 +123,10 @@ void sema_walk(node_t *node) {
         if (node->lhs->type->size_deref == 0)
             is_left_ptr = 0;
         if (node->lhs->type->size_deref == 0 &&
-                node->rhs->type->size_deref == 0)
+            node->rhs->type->size_deref == 0)
             error("index is only to use in pointer and array");
-        node->type = (is_left_ptr ? node->lhs->type->ptr : node->rhs->type->ptr);
+        node->type =
+            (is_left_ptr ? node->lhs->type->ptr : node->rhs->type->ptr);
         break;
     case ND_INITIALIZER:
         for (int i = 0; i < node->initializer->len; i++) {

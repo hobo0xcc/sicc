@@ -86,7 +86,7 @@ void gen_asm(ir_t *ir) {
         char *s = vec_get(ir->const_str, i);
         emit(".LC%d:\n  .asciz \"%s\"", i, s);
     }
-    
+
     emit("\n.section __TEXT,__text");
     for (int pc = 0; pc < len; pc++) {
         ins_t *ins = vec_get(ir->code, pc);

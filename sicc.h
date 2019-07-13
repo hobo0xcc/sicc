@@ -111,10 +111,10 @@ enum _ir_enum {
     IR_RET_NONE,   // Return none
     // IR_SAVE_REG,      Save register
     // IR_REST_REG,      Restore register
-    IR_JMP,        // Jmp
-    IR_JTRUE,      // Jmp if true(1)
-    IR_STORE_VAR,  // Store reg to var
-    IR_LOAD_VAR,   // Load var to reg
+    IR_JMP,       // Jmp
+    IR_JTRUE,     // Jmp if true(1)
+    IR_STORE_VAR, // Store reg to var
+    IR_LOAD_VAR,  // Load var to reg
     IR_LOAD_ADDR,
     IR_LEAVE,
     IR_LOAD_CONST,
@@ -145,7 +145,6 @@ typedef struct _token {
     char *str;
     int line;
 } token_t;
-
 
 typedef struct _type_info {
     int size;

@@ -45,14 +45,14 @@ static int free_stack(int size) {
     return cur_stack;
 }
 
-static var_t *gen_initializer(ir_t *ir, node_t *node, 
-        type_t *array_ty, int offset);
+static var_t *gen_initializer(ir_t *ir, node_t *node, type_t *array_ty,
+                              int offset);
 static void gen_stmt(ir_t *ir, node_t *node);
 static int gen_expr(ir_t *ir, node_t *node);
 static int gen_assign(ir_t *ir, node_t *node, int left, int right);
 
-static var_t *gen_initializer(ir_t *ir, node_t *node, 
-        type_t *array_ty, int offset) {
+static var_t *gen_initializer(ir_t *ir, node_t *node, type_t *array_ty,
+                              int offset) {
     int elem_size = array_ty->size_deref;
     int elem_offset = offset;
     int elem_len = array_ty->array_size;
@@ -62,11 +62,10 @@ static var_t *gen_initializer(ir_t *ir, node_t *node,
         emit(ir, IR_STORE_VAR, elem_offset, r, elem_size);
         nreg--;
     }
-    
+
     var_t *var = new_var(offset, array_ty->size * array_ty->array_size);
     return var;
 }
-
 
 static void gen_stmt(ir_t *ir, node_t *node) {
     if (node->ty == ND_FUNCS) {
@@ -220,9 +219,8 @@ static int gen_assign(ir_t *ir, node_t *node, int left, int right) {
         return -1;
     } else {
         if (node->lhs->ty == ND_DEREF_LVAL ||
-                node->lhs->ty == ND_DEREF_INDEX_LVAL) {
-            emit(ir, IR_STORE, left, right,
-                    node->lhs->type->size);
+            node->lhs->ty == ND_DEREF_INDEX_LVAL) {
+            emit(ir, IR_STORE, left, right, node->lhs->type->size);
             nreg--;
             return nreg;
         } else if (node->lhs->ty == ND_IDENT_LVAL) {
@@ -247,8 +245,7 @@ static int gen_expr(ir_t *ir, node_t *node) {
     left = gen_ir(ir, node->lhs);
     op = node->op;
     right = gen_ir(ir, node->rhs);
-    if (node->type->ty == TY_PTR ||
-            node->type->ty == TY_ARRAY) {
+    if (node->type->ty == TY_PTR || node->type->ty == TY_ARRAY) {
         emit(ir, IR_PTR_CAST, right, -1, node->type->size_deref);
     }
 
@@ -303,8 +300,7 @@ int gen_ir(ir_t *ir, node_t *node) {
         emit(ir, IR_MOV_IMM, nreg++, node->num, node->type->size);
         return nreg - 1;
     }
-    if (node->ty == ND_IDENT ||
-            node->ty == ND_IDENT_LVAL) {
+    if (node->ty == ND_IDENT || node->ty == ND_IDENT_LVAL) {
         if (map_find(ir->vars, node->str)) {
             var_t *var = (var_t *)map_get(ir->vars, node->str);
             if (node->ty == ND_IDENT)
@@ -315,15 +311,13 @@ int gen_ir(ir_t *ir, node_t *node) {
         } else
             error("Undefined variable: %s", node->str);
     }
-    if (node->ty == ND_DEREF ||
-            node->ty == ND_DEREF_LVAL) {
+    if (node->ty == ND_DEREF || node->ty == ND_DEREF_LVAL) {
         int r = gen_ir(ir, node->lhs);
         if (node->ty == ND_DEREF)
             emit(ir, IR_LOAD, r, r, node->type->size);
         return r;
     }
-    if (node->ty == ND_DEREF_INDEX ||
-            node->ty == ND_DEREF_INDEX_LVAL) {
+    if (node->ty == ND_DEREF_INDEX || node->ty == ND_DEREF_INDEX_LVAL) {
         int left = gen_ir(ir, node->lhs);
         int right = gen_ir(ir, node->rhs);
         int size;
@@ -367,7 +361,7 @@ int gen_ir(ir_t *ir, node_t *node) {
         emit(ir, IR_MOV_IMM, nreg++, node->num, node->type->size);
         return nreg - 1;
     }
-    
+
     if (node->ty == ND_SIZEOF) {
         emit(ir, IR_MOV_IMM, nreg++, node->type->size, 4);
         return nreg - 1;

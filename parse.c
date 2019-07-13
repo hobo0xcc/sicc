@@ -234,7 +234,7 @@ static node_t *equal_expr() {
             op = OP_EQUAL;
         else if (equal(peek(0), "!="))
             op = OP_NOT_EQUAL;
-        else 
+        else
             break;
 
         node_t *node = new_node(ND_EXPR);
