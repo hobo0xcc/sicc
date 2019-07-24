@@ -70,6 +70,7 @@ static node_t *assign_expr();
 static type_t *type();
 static node_t *init();
 static node_t *decl();
+static node_t *ext_decl();
 static node_t *stmt();
 static node_t *stmts();
 static node_t *arguments();
@@ -344,6 +345,16 @@ static node_t *decl() {
     return node;
 }
 
+static node_t *ext_decl() {
+    node_t *node = decl();
+    if (node->ty == ND_VAR_DECL)
+        node->ty = ND_EXT_VAR_DECL;
+    else if (node->ty == ND_VAR_DEF)
+        node->ty = ND_EXT_VAR_DEF;
+    expect(eat(), ";");
+    return node;
+}
+
 static node_t *stmt() {
     if (type_equal(peek(0), TK_RETURN)) {
         eat();
@@ -430,10 +441,19 @@ static node_t *function() {
 
 node_t *parse() {
     init_parser();
-    node_t *node = new_node(ND_FUNCS);
+    node_t *node = new_node(ND_EXTERNAL);
     node->funcs = new_vec();
+    node->decl_list = new_vec();
+
     while (!type_equal(peek(0), TK_EOF)) {
-        vec_push(node->funcs, function());
+        int i;
+        for (i = 0; !type_equal(peek(i), TK_IDENT); i++)
+            ;
+        if (equal(peek(i + 1), "("))
+            vec_push(node->funcs, function());
+        else
+            vec_push(node->decl_list, ext_decl());
     }
+
     return node;
 }

@@ -80,6 +80,22 @@ void gen_asm(ir_t *ir) {
         emit(".global _%s", vec_get(ir->gfuncs, i));
     }
 
+    int ngvars = map_len(ir->gvars);
+    emit(".section __DATA,_data");
+    for (int i = 0; i < ngvars; i++) {
+        gvar_t *gvar = vec_get(ir->gvars->items, i);
+        if (gvar->is_null) {
+            emit("  .comm _%s, %d", gvar->name, gvar->size);
+        } else {
+            if (gvar->init->ty == ND_NUM) {
+                emit("  _%s: \n  .long %d", gvar->name, gvar->init->num);
+            } else {
+                error("Global variable initializer that other than number is "
+                      "not implemented yet");
+            }
+        }
+    }
+
     int nconsts = vec_len(ir->const_str);
     emit(".section __TEXT,__cstring");
     for (int i = 0; i < nconsts; i++) {
@@ -208,6 +224,18 @@ void gen_asm(ir_t *ir) {
             break;
         case IR_LOAD_ADDR_VAR:
             emit("  lea %s, [rbp%+d]", regs[lhs], -rhs);
+            break;
+        case IR_PUSH:
+            emit("  push %s", regs[lhs]);
+            break;
+        case IR_POP:
+            emit("  pop %s", regs[lhs]);
+            break;
+        case IR_LOAD_GVAR:
+            emit("  mov %s, %s [rip+_%s]", REG(lhs), ptr_size(ins), ins->name);
+            break;
+        case IR_LOAD_ADDR_GVAR:
+            emit("  lea %s, [rip+_%s]", regs[lhs], ins->name);
             break;
         default:
             error("Unknown IR type: %d", ins->op);

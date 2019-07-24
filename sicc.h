@@ -87,6 +87,9 @@ enum _node_enum {
     ND_DEREF_INDEX_LVAL = 277,
     ND_IDENT_LVAL = 278,
     ND_INITIALIZER = 279,
+    ND_EXTERNAL = 280,
+    ND_EXT_VAR_DEF = 281,
+    ND_EXT_VAR_DECL = 282,
 };
 
 enum _ir_enum {
@@ -122,6 +125,10 @@ enum _ir_enum {
     IR_EQ,
     IR_NEQ,
     IR_LOAD_ADDR_VAR,
+    IR_PUSH,
+    IR_POP,
+    IR_LOAD_GVAR,
+    IR_LOAD_ADDR_GVAR,
 };
 
 typedef struct _vec {
@@ -170,6 +177,7 @@ typedef struct _node {
     int size;
     type_t *type;
     struct _node *else_stmt;
+    vec_t *decl_list; // declaration of type/variable
     vec_t *stmts;
     vec_t *funcs;
     vec_t *args;
@@ -191,8 +199,16 @@ typedef struct _var {
     int size;
 } var_t;
 
+typedef struct _gvar {
+    char *name;
+    int size;
+    int is_null;
+    node_t *init;
+} gvar_t;
+
 typedef struct _ir {
-    vec_t *code;      // ins_t list
+    vec_t *code; // ins_t list
+    map_t *gvars;
     map_t *vars;      // var_t map
     vec_t *gfuncs;    // char * list
     vec_t *const_str; // char * list

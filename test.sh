@@ -17,7 +17,7 @@ test () {
   if [ "$expect" == "$ret" ]; then
     echo "$arg -> $ret"
   else
-    echo "$expect expected but got $ret"
+    echo "$expect expected but got $ret: $arg"
     exit 1
   fi
 }
@@ -33,6 +33,7 @@ test 0 'test/ptr.c'
 test 0 'test/strings.c'
 test 0 'test/operator.c'
 test 0 'test/array.c'
+test 0 'test/global_val.c'
 # test 0 'test/test.c'
 # test 0 'int main() { return 0; }'
 # test 15 'int main() { int a = 10; int b = 5; return a + b; }'

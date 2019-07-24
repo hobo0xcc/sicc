@@ -10,6 +10,7 @@ static int cur_stack = 0;
 ir_t *new_ir() {
     ir_t *ir = calloc(1, sizeof(ir_t));
     ir->code = new_vec();
+    ir->gvars = new_map();
     ir->vars = new_map();
     ir->gfuncs = new_vec();
     ir->const_str = new_vec();
@@ -21,6 +22,13 @@ var_t *new_var(int offset, int size) {
     var->offset = offset;
     var->size = size;
     return var;
+}
+
+gvar_t *new_gvar(char *name, int size) {
+    gvar_t *gvar = calloc(1, sizeof(gvar_t));
+    gvar->name = name;
+    gvar->size = size;
+    return gvar;
 }
 
 static ins_t *emit(ir_t *ir, int op, int lhs, int rhs, int size) {
@@ -74,6 +82,21 @@ static void gen_stmt(ir_t *ir, node_t *node) {
             node_t *func = vec_get(node->funcs, i);
             gen_stmt(ir, func);
         }
+        return;
+    }
+    if (node->ty == ND_EXTERNAL) {
+        int len = vec_len(node->decl_list);
+        for (int i = 0; i < len; i++) {
+            node_t *decl = vec_get(node->decl_list, i);
+            gen_stmt(ir, decl);
+        }
+
+        len = vec_len(node->funcs);
+        for (int i = 0; i < len; i++) {
+            node_t *func = vec_get(node->funcs, i);
+            gen_stmt(ir, func);
+        }
+
         return;
     }
     if (node->ty == ND_FUNC) {
@@ -131,10 +154,7 @@ static void gen_stmt(ir_t *ir, node_t *node) {
         for (int i = init_nvar; i < nvar; i++) {
             map_pop(ir->vars);
         }
-        // int diff = cur_stack - init_stack;
-        // ins->lhs = diff;
-        // free_stack(diff);
-        // emit(ir, IR_FREE, diff, -1, -1);
+
         return;
     }
     if (node->ty == ND_RETURN) {
@@ -209,6 +229,36 @@ static void gen_stmt(ir_t *ir, node_t *node) {
         map_put(ir->vars, node->str, var);
         return;
     }
+    if (node->ty == ND_EXT_VAR_DEF) {
+        if (map_find(ir->gvars, node->str))
+            error("%s is already defined", node->str);
+        if (node->lhs->ty == ND_INITIALIZER) {
+            if (node->type->ty != TY_ARRAY) {
+                error("Initializer is only to use to an array");
+            } else {
+                // var_t *var = gen_initializer(ir, node->lhs, node->type,
+                // offset); map_put(ir->gvars, node->str, var);
+                error("Global array initializer is not implemented yet");
+            }
+            return;
+        }
+
+        gvar_t *gvar = new_gvar(node->str, node->type->size);
+        gvar->init = node->lhs;
+        gvar->is_null = 0;
+        map_put(ir->gvars, node->str, gvar);
+
+        return;
+    }
+    if (node->ty == ND_EXT_VAR_DECL) {
+        if (map_find(ir->gvars, node->str))
+            error("%s is already defined", node->str);
+        gvar_t *gvar = new_gvar(node->str, node->type->size);
+        gvar->is_null = 1;
+        gvar->init = NULL;
+        map_put(ir->gvars, node->str, gvar);
+        return;
+    }
 
     error("Not implemented yet: %d", node->ty);
 }
@@ -225,9 +275,6 @@ static int gen_assign(ir_t *ir, node_t *node, int left, int right) {
             return nreg;
         } else if (node->lhs->ty == ND_IDENT_LVAL) {
             emit(ir, IR_STORE, left, right, node->lhs->type->size);
-            // var_t *var = (var_t *)map_get(ir->vars, node->lhs->str);
-            // ins_t *ins = emit(ir, IR_STORE_VAR, var->offset, right,
-            //                   node->lhs->type->size);
             nreg--;
             return nreg;
         } else {
@@ -305,8 +352,19 @@ int gen_ir(ir_t *ir, node_t *node) {
             var_t *var = (var_t *)map_get(ir->vars, node->str);
             if (node->ty == ND_IDENT)
                 emit(ir, IR_LOAD_VAR, nreg++, var->offset, var->size);
-            else
+            else // ND_IDENT_LVAL
                 emit(ir, IR_LOAD_ADDR_VAR, nreg++, var->offset, var->size);
+            return nreg - 1;
+        } else if (map_find(ir->gvars, node->str)) {
+            gvar_t *gvar = (gvar_t *)map_get(ir->gvars, node->str);
+            if (node->ty == ND_IDENT) {
+                ins_t *ins = emit(ir, IR_LOAD_GVAR, nreg++, -1, gvar->size);
+                ins->name = gvar->name;
+            } else { // ND_IDENT_LVAL
+                ins_t *ins =
+                    emit(ir, IR_LOAD_ADDR_GVAR, nreg++, -1, gvar->size);
+                ins->name = gvar->name;
+            }
             return nreg - 1;
         } else
             error("Undefined variable: %s", node->str);
@@ -335,9 +393,16 @@ int gen_ir(ir_t *ir, node_t *node) {
     }
     if (node->ty == ND_FUNC_CALL) {
         gen_ir(ir, node->rhs);
+        for (int i = 0; i < nreg; i++) {
+            emit(ir, IR_PUSH, i, -1, -1);
+        }
+        int saved_regs = nreg;
         ins_t *ins = emit(ir, IR_CALL, -1, -1, -1);
         ins->name = node->str;
         emit(ir, IR_MOV_RETVAL, nreg++, -1, -1);
+        for (int i = 0; i < saved_regs; i++) {
+            emit(ir, IR_POP, i, -1, -1);
+        }
         return nreg - 1;
     }
     if (node->ty == ND_PARAMS) {
@@ -447,6 +512,21 @@ void print_ir(ir_t *ir) {
             break;
         case IR_LOAD_CONST:
             printf("  load_const r%d, c%d\n", ins->lhs, ins->rhs);
+            break;
+        case IR_LOAD_ADDR_VAR:
+            printf("  load_addr_var r%d, v%d\n", ins->lhs, ins->rhs);
+            break;
+        case IR_PUSH:
+            printf("  push r%d\n", ins->lhs);
+            break;
+        case IR_POP:
+            printf("  pop r%d\n", ins->lhs);
+            break;
+        case IR_LOAD_GVAR:
+            printf("  load_gvar r%d, %s\n", ins->lhs, ins->name);
+            break;
+        case IR_LOAD_ADDR_GVAR:
+            printf("  load_addr_gvar r%d, %s\n", ins->lhs, ins->name);
             break;
         default:
             error("Unknown operator: %d", ins->op);

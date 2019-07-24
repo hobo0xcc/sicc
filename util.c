@@ -18,6 +18,7 @@ char *read_file(char *name) {
         if (nread < 4096)
             break;
     }
+    fclose(f);
     return buf_str(s);
 }
 

@@ -11,7 +11,7 @@ int fib(int n)
  */
 int main()
 {
-  int n = 6;
+  int n = 10;
   printf("%d\n", fib(n));
   return 0;
 }

@@ -1,6 +1,8 @@
 #include <stdio.h>
 
 int a = 10;
+char *s;
+int b;
 
 int main()
 {
