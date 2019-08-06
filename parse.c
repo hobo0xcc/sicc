@@ -55,6 +55,7 @@ void init_parser() {
     types = new_map();
     map_put(types, "int", new_type_info(4, TY_INT));
     map_put(types, "char", new_type_info(1, TY_CHAR));
+    map_put(types, "void", new_type_info(0, TY_VOID));
 }
 
 static node_t *params();
@@ -309,9 +310,7 @@ static node_t *init() {
     }
 }
 
-static node_t *decl() {
-    node_t *node = new_node(ND_VAR_DEF);
-    node->type = type();
+static void decl_init(node_t *node) {
     if (!type_equal(peek(0), TK_IDENT))
         error("Var name expected but got %s", peek(0)->str);
     node->str = eat()->str;
@@ -336,12 +335,44 @@ static node_t *decl() {
             expect(eat(), "]");
         }
     }
+}
+
+static node_t *decl() {
+    node_t *node = new_node(ND_VAR_DEF);
+    node->type = type();
+    decl_init(node);
     if (!equal(peek(0), "=")) {
         node->ty = ND_VAR_DECL;
         return node;
     }
     expect(eat(), "=");
     node->lhs = init();
+    return node;
+}
+
+static node_t *decl_list() {
+    node_t *first = decl();
+    if (!equal(peek(0), ",")) {
+        return first;
+    }
+    
+    node_t *node = new_node(ND_VAR_DECL_LIST);
+    node->vars = new_vec();
+    vec_push(node->vars, first);
+    for (; equal(peek(0), ",");) {
+        eat();
+        node_t *tmp = new_node(ND_VAR_DECL);
+        tmp->type = calloc(1, sizeof(type_t));
+        memcpy(tmp->type, first->type, sizeof(type_t));
+        decl_init(tmp);
+        if (equal(peek(0), "=")) {
+            eat();
+            tmp->lhs = init();
+            tmp->ty = ND_VAR_DEF;
+        }
+        vec_push(node->vars, tmp);
+    }
+
     return node;
 }
 
@@ -386,7 +417,7 @@ static node_t *stmt() {
     } else if (type_equal(peek(0), TK_LBRACE)) {
         return stmts();
     } else if (map_find(types, peek(0)->str)) {
-        node_t *node = decl();
+        node_t *node = decl_list();
         expect(eat(), ";");
         return node;
     } else {
@@ -412,6 +443,10 @@ static node_t *arguments() {
     expect(eat(), "(");
     while (!equal(peek(0), ")")) {
         type_t *ty = type();
+        if (ty->ty == TY_VOID && equal(peek(0), ")")) {
+            eat();
+            return node;
+        }
         node_t *name = new_node(ND_VAR_DECL);
         if (!type_equal(peek(0), TK_IDENT))
             error("Identifier expected, but got %s", peek(0)->str);

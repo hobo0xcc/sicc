@@ -36,6 +36,7 @@ enum _token_enum {
     TK_IF,
     TK_ELSE,
     TK_WHILE,
+    TK_FOR,
 
     TK_SIZEOF,
 
@@ -49,6 +50,7 @@ enum _token_enum {
 enum _type_enum {
     TY_INT,
     TY_CHAR,
+    TY_VOID,
     TY_PTR,
     TY_STRUCT,
     TY_ARRAY,
@@ -64,32 +66,34 @@ enum _op_enum {
 
 enum _node_enum {
     ND_FUNC = 256,
-    ND_FUNCS = 257,
-    ND_ARGS = 258,
-    ND_PARAMS = 259,
-    ND_STMTS = 260,
-    ND_NUM = 261,
-    ND_IDENT = 262,
-    ND_FUNC_CALL = 263,
-    ND_EXPR = 264,
-    ND_RETURN = 265,
-    ND_IF = 266,
-    ND_IF_ELSE = 267,
-    ND_VAR_DEF = 268,
-    ND_VAR_DECL = 269,
-    ND_DEREF = 270,
-    ND_STRING = 271,
-    ND_CHARACTER = 272,
-    ND_WHILE = 273,
-    ND_SIZEOF = 274,
-    ND_DEREF_INDEX = 275,
-    ND_DEREF_LVAL = 276,
-    ND_DEREF_INDEX_LVAL = 277,
-    ND_IDENT_LVAL = 278,
-    ND_INITIALIZER = 279,
-    ND_EXTERNAL = 280,
-    ND_EXT_VAR_DEF = 281,
-    ND_EXT_VAR_DECL = 282,
+    ND_FUNCS,
+    ND_ARGS,
+    ND_PARAMS,
+    ND_STMTS,
+    ND_NUM,
+    ND_IDENT,
+    ND_FUNC_CALL,
+    ND_EXPR,
+    ND_RETURN,
+    ND_IF,
+    ND_IF_ELSE,
+    ND_WHILE,
+    ND_FOR,
+    ND_VAR_DEF,
+    ND_VAR_DECL,
+    ND_VAR_DECL_LIST,
+    ND_DEREF,
+    ND_STRING,
+    ND_CHARACTER,
+    ND_SIZEOF,
+    ND_DEREF_INDEX,
+    ND_DEREF_LVAL,
+    ND_DEREF_INDEX_LVAL,
+    ND_IDENT_LVAL,
+    ND_INITIALIZER,
+    ND_EXTERNAL,
+    ND_EXT_VAR_DEF,
+    ND_EXT_VAR_DECL,
 };
 
 enum _ir_enum {
@@ -178,6 +182,7 @@ typedef struct _node {
     type_t *type;
     struct _node *else_stmt;
     vec_t *decl_list; // declaration of type/variable
+    vec_t *vars;
     vec_t *stmts;
     vec_t *funcs;
     vec_t *args;

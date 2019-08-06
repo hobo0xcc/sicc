@@ -12,7 +12,7 @@ static struct keyword {
 } keywords[] = {
     {"return", TK_RETURN}, {"if", TK_IF},     {"else", TK_ELSE},
     {"int", TK_INT},       {"char", TK_CHAR}, {"while", TK_WHILE},
-    {"sizeof", TK_SIZEOF}, {NULL, 0},
+    {"sizeof", TK_SIZEOF}, {"for", TK_FOR}, {NULL, 0},
 };
 
 static int check_ident_type(char *str) {

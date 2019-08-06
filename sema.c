@@ -133,6 +133,11 @@ void sema_walk(node_t *node) {
             }
         }
         break;
+    case ND_VAR_DECL_LIST:
+        for (int i = 0, len = vec_len(node->vars); i < len; i++) {
+            sema_walk(vec_get(node->vars, i));
+        }
+        break;
     case ND_EXT_VAR_DECL:
         map_put(gvar_types, node->str, node->type);
         if (node->type->ty == TY_ARRAY_NOSIZE) {

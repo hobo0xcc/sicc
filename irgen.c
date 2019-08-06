@@ -229,6 +229,12 @@ static void gen_stmt(ir_t *ir, node_t *node) {
         map_put(ir->vars, node->str, var);
         return;
     }
+    if (node->ty == ND_VAR_DECL_LIST) {
+        for (int i = 0, len = vec_len(node->vars); i < len; i++) {
+            gen_ir(ir, vec_get(node->vars, i));
+        }
+        return;
+    }
     if (node->ty == ND_EXT_VAR_DEF) {
         if (map_find(ir->gvars, node->str))
             error("%s is already defined", node->str);
