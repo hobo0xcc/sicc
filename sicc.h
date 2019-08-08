@@ -22,6 +22,7 @@ enum _token_enum {
   TK_NOT_EQUAL,
   TK_EQUAL,
   TK_NOT,
+  TK_AND,
 
   TK_LPAREN,
   TK_RPAREN,
@@ -83,6 +84,7 @@ enum _node_enum {
   ND_VAR_DECL,
   ND_VAR_DECL_LIST,
   ND_DEREF,
+  ND_REF,
   ND_STRING,
   ND_CHARACTER,
   ND_SIZEOF,

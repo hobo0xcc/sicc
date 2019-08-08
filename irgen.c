@@ -405,6 +405,10 @@ int gen_ir(ir_t *ir, node_t *node) {
     nreg--;
     return left;
   }
+  if (node->ty == ND_REF) {
+    int r = gen_ir(ir, node->lhs);
+    return r;
+  }
   if (node->ty == ND_FUNC_CALL) {
     gen_ir(ir, node->rhs);
     for (int i = 0; i < nreg; i++) {

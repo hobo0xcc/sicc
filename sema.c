@@ -161,6 +161,19 @@ void sema_walk(node_t *node, int stat) {
     node->str = node->lhs->str;
     node->type = node->lhs->type->ptr;
     break;
+  case ND_REF:
+    sema_walk(node->lhs, STAT_EXPR);
+    if (node->lhs->ty == ND_IDENT)
+      node->lhs->ty = ND_IDENT_LVAL;
+    else if (node->lhs->ty == ND_DEREF_INDEX)
+      node->lhs->ty = ND_DEREF_INDEX_LVAL;
+    else if (node->lhs->ty == ND_DEREF)
+      node->lhs->ty = ND_DEREF_LVAL;
+    else
+      error("Reference operator requires variable");
+    node->type->ptr = node->lhs->type;
+    node->type->size_deref = node->lhs->type->size;
+    break;
   case ND_STRING:
     node->type = new_type(8, TY_PTR);
     {

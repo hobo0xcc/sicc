@@ -199,6 +199,10 @@ void tokenize(char *s) {
         continue;
       }
     }
+    if (c == '&') {
+      vec_push(tokens, make_token(TK_AND, "&", line));
+      continue;
+    }
     if (c == '[') {
       vec_push(tokens, make_token(TK_LBRACKET, "[", line));
       continue;

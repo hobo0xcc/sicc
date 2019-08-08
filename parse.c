@@ -35,7 +35,7 @@ static int type_equal(token_t *tk, int ty) {
 static void expect(token_t *tk, char *str) {
   if (!strcmp(tk->str, str))
     return;
-  error("%s expected, but got %s", str, tk->str);
+  error("%s expected, but got %s: line %d", str, tk->str, tk->line);
 }
 
 node_t *new_node(int ty) {
@@ -143,6 +143,12 @@ static node_t *unary() {
     eat();
     node_t *node = new_node(ND_DEREF);
     node->lhs = unary();
+    return node;
+  } else if (equal(peek(0), "&")) {
+    eat();
+    node_t *node = new_node(ND_REF);
+    node->lhs = unary();
+    node->type = new_type(8, TY_PTR);
     return node;
   } else if (equal(peek(0), "sizeof")) {
     eat();
