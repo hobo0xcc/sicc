@@ -133,6 +133,16 @@ static node_t *postfix() {
     node->str = prim->str;
     node->rhs = params();
     return node;
+  } else if (equal(peek(0), "++")) {
+    eat();
+    node_t *node = new_node(ND_INC_L);
+    node->lhs = prim;
+    return node;
+  } else if (equal(peek(0), "--")) {
+    eat();
+    node_t *node = new_node(ND_DEC_L);
+    node->lhs = prim;
+    return node;
   }
 
   return prim;
@@ -420,6 +430,37 @@ static node_t *stmt() {
     node->rhs = assign_expr();
     expect(eat(), ")");
     node->lhs = stmt();
+    return node;
+  } else if (type_equal(peek(0), TK_FOR)) {
+    node_t *node = new_node(ND_FOR);
+    eat();
+    expect(eat(), "(");
+    node_t *init = NULL;
+    node_t *cond = NULL;
+    node_t *loop = NULL;
+    node_t *body;
+
+    token_t *tk = peek(0);
+    // for (init; cond; loop) body
+    if (map_find(types, tk->str)) {
+      init = decl_list();
+    } else {
+      init = assign_expr();
+    }
+    expect(eat(), ";");
+    if (!equal(peek(0), ";"))
+      cond = assign_expr();
+    expect(eat(), ";");
+    if (!equal(peek(0), ";"))
+      loop = assign_expr();
+    expect(eat(), ")");
+    body = stmts();
+
+    node->init = init;
+    node->cond = cond;
+    node->loop = loop;
+    node->body = body;
+
     return node;
   } else if (type_equal(peek(0), TK_LBRACE)) {
     return stmts();

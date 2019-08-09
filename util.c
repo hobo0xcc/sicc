@@ -55,7 +55,10 @@ void vec_push(vec_t *v, void *p) {
   v->data[v->len++] = p;
 }
 
-void vec_pop(vec_t *v) { free(v->data[v->len -= 1]); }
+void vec_pop(vec_t *v) { 
+  v->len -= 1;
+  v->data[v->len] = NULL;
+}
 
 void vec_append(vec_t *v, int len, ...) {
   va_list ap;

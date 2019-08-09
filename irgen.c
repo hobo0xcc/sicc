@@ -45,6 +45,8 @@ static int alloc_stack(int size) {
   cur_stack += size;
   if (stack_size < cur_stack)
     stack_size = cur_stack;
+  if (stack_size % 16 != 0)
+    stack_size += 16 - (stack_size % 16);
   return cur_stack;
 }
 
@@ -198,6 +200,37 @@ static void gen_stmt(ir_t *ir, node_t *node) {
     nreg--;
     return;
   }
+  if (node->ty == ND_FOR) {
+    int cond = nlabel++;
+    int end = nlabel++;
+    
+    gen_ir(ir, node->init);
+    emit(ir, IR_LABEL, cond, -1, -1);
+    int r = gen_ir(ir, node->cond);
+    if (r != -1) {
+      emit(ir, IR_JZERO, r, end, -1);
+      nreg--;
+    }
+    gen_ir(ir, node->body);
+    if (gen_ir(ir, node->loop) != -1)
+      nreg--;
+    emit(ir, IR_JMP, cond, -1, -1);
+    emit(ir, IR_LABEL, end, -1, -1);
+
+    if (node->init->ty >= ND_VAR_DEF &&
+        node->init->ty <= ND_EXT_VAR_DECL) {
+      if (node->init->ty == ND_VAR_DECL_LIST) {
+        int len = vec_len(node->init->vars);
+        for (int i = 0; i < len; i++) {
+          map_pop(ir->vars);
+        }
+      } else {
+        map_pop(ir->vars);
+      }
+    }
+
+    return;
+  }
   if (node->ty == ND_VAR_DEF) {
     if (map_find(ir->vars, node->str))
       error("%s is already defined", node->str);
@@ -276,19 +309,9 @@ static int gen_assign(ir_t *ir, node_t *node, int left, int right) {
     error("%s is not declared", node->lhs->str);
     return -1;
   } else {
-    if (node->lhs->ty == ND_DEREF_LVAL ||
-        node->lhs->ty == ND_DEREF_INDEX_LVAL) {
-      emit(ir, IR_STORE, left, right, node->lhs->type->size);
-      nreg--;
-      return nreg;
-    } else if (node->lhs->ty == ND_IDENT_LVAL) {
-      emit(ir, IR_STORE, left, right, node->lhs->type->size);
-      nreg--;
-      return nreg;
-    } else {
-      error("Invalid lvalue type");
-      return -1;
-    }
+    emit(ir, IR_STORE, left, right, node->lhs->type->size);
+    nreg--;
+    return nreg;
   }
 }
 
@@ -297,6 +320,7 @@ static int gen_expr(ir_t *ir, node_t *node) {
   int op;
   int right;
   int size;
+  int r;
 
   left = gen_ir(ir, node->lhs);
   op = node->op;
@@ -331,12 +355,18 @@ static int gen_expr(ir_t *ir, node_t *node) {
     left = gen_assign(ir, node, left, right);
     break;
   case OP_PLUS_ASSIGN:
-    emit(ir, IR_ADD, left, right, size);
-    left = gen_assign(ir, node, left, left);
+    r = nreg++;
+    emit(ir, IR_LOAD, r, left, node->lhs->type->size);
+    emit(ir, IR_ADD, r, right, node->lhs->type->size);
+    left = gen_assign(ir, node, left, r);
+    nreg--;
     break;
   case OP_MINUS_ASSIGN:
-    emit(ir, IR_SUB, left, right, size);
-    left = gen_assign(ir, node, left, left);
+    r = nreg++;
+    emit(ir, IR_LOAD, r, left, node->lhs->type->size);
+    emit(ir, IR_SUB, r, right, node->lhs->type->size);
+    left = gen_assign(ir, node, left, r);
+    nreg--;
     break;
   case OP_EQUAL:
     emit(ir, IR_EQ, left, right, size);
@@ -352,6 +382,8 @@ static int gen_expr(ir_t *ir, node_t *node) {
 }
 
 int gen_ir(ir_t *ir, node_t *node) {
+  if (!node)
+    return -1;
   if (node->ty == ND_EXPR) {
     return gen_expr(ir, node);
   }
@@ -423,6 +455,28 @@ int gen_ir(ir_t *ir, node_t *node) {
       emit(ir, IR_POP, i, -1, -1);
     }
     return nreg - 1;
+  }
+  if (node->ty == ND_INC_L) {
+    int r_value = nreg++;
+    int r = gen_ir(ir, node->lhs);
+    int tr = nreg++; // tmp reg
+    emit(ir, IR_LOAD, r_value, r, node->type->size);
+    emit(ir, IR_MOV, tr, r_value, node->type->size);
+    emit(ir, IR_ADD_IMM, tr, 1, node->type->size);
+    emit(ir, IR_STORE, r, tr, node->type->size);
+    nreg -= 2;
+    return r_value;
+  }
+  if (node->ty == ND_DEC_L) {
+    int r_value = nreg++;
+    int r = gen_ir(ir, node->lhs);
+    int tr = nreg++; // tmp reg
+    emit(ir, IR_LOAD, r_value, r, node->type->size);
+    emit(ir, IR_MOV, tr, r_value, node->type->size);
+    emit(ir, IR_SUB_IMM, tr, 1, node->type->size);
+    emit(ir, IR_STORE, r, tr, node->type->size);
+    nreg -= 2;
+    return r_value;
   }
   if (node->ty == ND_PARAMS) {
     int len = vec_len(node->params);

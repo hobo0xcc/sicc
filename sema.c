@@ -7,12 +7,22 @@ static enum {
   STAT_EXTERNAL,
   STAT_FUNC,
   STAT_WHILE,
+  STAT_FOR,
   STAT_EXPR,
 } _sema_stat;
 
 static map_t *gvar_types;
 static map_t *gfuncs;
 static map_t *var_types;
+
+static void to_lval(node_t *node) {
+  if (node->ty == ND_DEREF)
+    node->ty = ND_DEREF_LVAL;
+  else if (node->ty == ND_DEREF_INDEX)
+    node->ty = ND_DEREF_INDEX_LVAL;
+  else if (node->ty == ND_IDENT)
+    node->ty = ND_IDENT_LVAL;
+}
 
 static int find_var_types(char *str) {
   if (map_find(var_types, str))
@@ -64,13 +74,13 @@ void sema_walk(node_t *node, int stat) {
     }
     break;
   case ND_STMTS: {
-    // int size_var = map_len(vars) - 1;
+    int var_length_before = map_len(var_types);
     for (int i = 0; i < vec_len(node->stmts); i++) {
       sema_walk(vec_get(node->stmts, i), stat);
     }
-    // int cur_size_var = map_len(vars) - 1;
-    // for (int i = size_var; i < cur_size_var; i++)
-    //   map_pop(vars);
+    int var_len_after = map_len(var_types);
+    // for (int i = var_length_before; i < var_len_after; i++)
+    //   map_pop(var_types);
   } break;
   case ND_NUM: {
     type_info_t *info = map_get(types, "int");
@@ -93,7 +103,9 @@ void sema_walk(node_t *node, int stat) {
     sema_walk(node->lhs, STAT_EXPR);
     sema_walk(node->rhs, STAT_EXPR);
     node->type = node->lhs->type;
-    if (node->lhs->ty == ND_IDENT && node->op == '=')
+    if (node->lhs->ty == ND_IDENT &&
+        (node->op == '=' || node->op == OP_PLUS_ASSIGN ||
+         node->op == OP_MINUS_ASSIGN))
       node->lhs->ty = ND_IDENT_LVAL;
     else if (node->lhs->ty == ND_DEREF && node->op == '=')
       node->lhs->ty = ND_DEREF_LVAL;
@@ -113,6 +125,8 @@ void sema_walk(node_t *node, int stat) {
     sema_walk(node->else_stmt, stat);
     break;
   case ND_VAR_DEF:
+    if (find_var_types(node->str))
+      error("Variable redefinition is not allowed: %s", node->str);
     map_put(var_types, node->str, node->type);
     sema_walk(node->lhs, STAT_EXPR);
     if (node->type->ty == TY_ARRAY_NOSIZE) {
@@ -126,12 +140,16 @@ void sema_walk(node_t *node, int stat) {
     }
     break;
   case ND_VAR_DECL:
+    if (find_var_types(node->str))
+      error("Variable redefinition is not allowed: %s", node->str);
     map_put(var_types, node->str, node->type);
     if (node->type->ty == TY_ARRAY_NOSIZE) {
       error("An array without size requires initializer");
     }
     break;
   case ND_EXT_VAR_DEF:
+    if (find_var_types(node->str))
+      error("Variabe redefinition is not allowed: %s", node->str);
     map_put(gvar_types, node->str, node->type);
     sema_walk(node->lhs, STAT_EXPR);
     if (node->type->ty == TY_ARRAY_NOSIZE) {
@@ -150,6 +168,8 @@ void sema_walk(node_t *node, int stat) {
     }
     break;
   case ND_EXT_VAR_DECL:
+    if (find_var_types(node->str))
+      error("Variable redefinition is not allowed: %s", node->str);
     map_put(gvar_types, node->str, node->type);
     if (node->type->ty == TY_ARRAY_NOSIZE) {
       error("An array without size requires initializer");
@@ -199,6 +219,24 @@ void sema_walk(node_t *node, int stat) {
     sema_walk(node->rhs, STAT_EXPR);
     sema_walk(node->lhs, STAT_WHILE);
     break;
+  case ND_FOR:
+    sema_walk(node->init, STAT_FOR);
+    sema_walk(node->cond, STAT_FOR);
+    sema_walk(node->loop, STAT_FOR);
+    sema_walk(node->body, STAT_FOR);
+
+    if (node->init->ty >= ND_VAR_DEF &&
+        node->init->ty <= ND_EXT_VAR_DECL) {
+      if (node->init->ty == ND_VAR_DECL_LIST) {
+        int len = vec_len(node->init->vars);
+        for (int i = 0; i < len; i++) {
+          map_pop(var_types);
+        }
+      } else {
+        map_pop(var_types);
+      }
+    }
+    break;
   case ND_DEREF_INDEX:
   case ND_DEREF_INDEX_LVAL:
     sema_walk(node->lhs, stat);
@@ -216,6 +254,16 @@ void sema_walk(node_t *node, int stat) {
     for (int i = 0; i < node->initializer->len; i++) {
       sema_walk(vec_get(node->initializer, i), STAT_EXPR);
     }
+    break;
+  case ND_INC_L:
+    sema_walk(node->lhs, STAT_EXPR);
+    node->type = node->lhs->type;
+    to_lval(node->lhs);
+    break;
+  case ND_DEC_L:
+    sema_walk(node->lhs, STAT_EXPR);
+    node->type = node->lhs->type;
+    to_lval(node->lhs);
     break;
   default:
     break;

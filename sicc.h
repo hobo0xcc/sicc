@@ -96,6 +96,11 @@ enum _node_enum {
   ND_EXTERNAL,
   ND_EXT_VAR_DEF,
   ND_EXT_VAR_DECL,
+  ND_INC_L,
+  ND_DEC_L,
+  ND_INC_R,
+  ND_DEC_R,
+  ND_NOP,
 };
 
 enum _ir_enum {
@@ -122,6 +127,7 @@ enum _ir_enum {
   // IR_REST_REG,      Restore register
   IR_JMP,       // Jmp
   IR_JTRUE,     // Jmp if true(1)
+  IR_JZERO,     // Jmp if zero
   IR_STORE_VAR, // Store reg to var
   IR_LOAD_VAR,  // Load var to reg
   IR_LOAD_ADDR,
@@ -135,6 +141,9 @@ enum _ir_enum {
   IR_POP,
   IR_LOAD_GVAR,
   IR_LOAD_ADDR_GVAR,
+  IR_ADD_IMM,
+  IR_SUB_IMM,
+  IR_MOV,
 };
 
 typedef struct _vec {
@@ -187,6 +196,10 @@ typedef struct _node {
   int size;
   type_t *type;
   struct _node *else_stmt;
+  struct _node *init;
+  struct _node *cond;
+  struct _node *loop;
+  struct _node *body;
   vec_t *decl_list; // declaration of type/variable
   vec_t *vars;
   vec_t *stmts;

@@ -124,7 +124,7 @@ void tokenize(char *s) {
             break;
         }
         if (*s == '\0')
-          error("Multiple line comments must be end as '*/'");
+          error("Multiple line comments must be ending as '*/'");
         s += 2; // skip '*' and '/'
         continue;
       }
