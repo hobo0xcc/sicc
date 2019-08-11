@@ -10,9 +10,10 @@
 
 #define POINTER_SIZE 8
 #define AX 7
+#define DI 8
 
 static const char *regs[] = {"r10", "r11", "rbx", "r12",
-                             "r13", "r14", "r15", "rax"};
+                             "r13", "r14", "r15", "rax", "rdi"};
 static const char *regs_32[] = {"r10d", "r11d", "ebx",  "r12d",
                                 "r13d", "r14d", "r15d", "eax"};
 static const char *regs_16[] = {"r10w", "r11w", "bx",   "r12w",
@@ -209,8 +210,8 @@ void gen_asm(ir_t *ir) {
       emit("  lea %s, [rip+.LC%d]", REG(lhs), rhs);
       break;
     case IR_PTR_CAST:
-      emit("  mov %s, %s", REG(AX), REG(lhs));
-      emit("  cdqe");
+      emit("  mov %s, %s", regs[AX], regs[lhs]);
+      // emit("  cdqe");
       emit("  lea %s, [0+rax*%d]", regs[lhs], ins->size);
       break;
     case IR_EQ:
@@ -248,6 +249,12 @@ void gen_asm(ir_t *ir) {
       break;
     case IR_MOV:
       emit("  mov %s, %s", REG(lhs), REG(rhs));
+      break;
+    case IR_LOGAND:
+      emit("  and %s, %s", REG(lhs), REG(rhs));
+      emit("  setnz al");
+      emit("  movzx %s, al", REG(lhs));
+      emit("  mov al, 0");
       break;
     default:
       error("Unknown IR type: %d", ins->op);

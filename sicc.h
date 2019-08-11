@@ -23,6 +23,7 @@ enum _token_enum {
   TK_EQUAL,
   TK_NOT,
   TK_AND,
+  TK_AND_AND,
 
   TK_LPAREN,
   TK_RPAREN,
@@ -63,6 +64,7 @@ enum _op_enum {
   OP_MINUS_ASSIGN,
   OP_EQUAL,
   OP_NOT_EQUAL,
+  OP_LOGIC_AND,
 };
 
 enum _node_enum {
@@ -144,6 +146,7 @@ enum _ir_enum {
   IR_ADD_IMM,
   IR_SUB_IMM,
   IR_MOV,
+  IR_LOGAND,
 };
 
 typedef struct _vec {

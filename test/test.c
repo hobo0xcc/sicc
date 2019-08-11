@@ -1,11 +1,12 @@
-#define A(b, c, d) b + c + d
+#include <stdio.h>
+#include <stdlib.h>
 
-int ascii(char c)
-{
-  return c - '0';
-}
-
-int main()
-{
-  return ascii('9') + A(5, 5, 5);
+int assert_eq(char *fmt, int c) {
+  if (!c) {
+    printf("PANIC: '%s'", fmt);
+    exit(1);
+  }
+  else
+    printf("PASS: '%s'", fmt);
+  return 1;
 }

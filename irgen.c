@@ -132,13 +132,19 @@ static void gen_stmt(ir_t *ir, node_t *node) {
         int offset = arg_stack;
         var_t *var = new_var(offset, arg->type->size);
         map_put(ir->vars, arg->str, var);
-        ins_t *ins = emit(ir, IR_LOAD_ARG, offset, i, arg->type->size);
+        if (arg->type->ty == TY_ARRAY)
+          emit(ir, IR_LOAD_ARG, offset, i, 8);
+        else
+          emit(ir, IR_LOAD_ARG, offset, i, arg->type->size);
         arg_stack -= arg->type->size;
       } else {
         int offset = alloc_stack(arg->type->size);
         var_t *var = new_var(offset, arg->type->size);
         map_put(ir->vars, arg->str, var);
-        emit(ir, IR_LOAD_ARG, offset, i, arg->type->size);
+        if (arg->type->ty == TY_ARRAY)
+          emit(ir, IR_LOAD_ARG, offset, i, 8);
+        else
+          emit(ir, IR_LOAD_ARG, offset, i, arg->type->size);
       }
     }
     return;
@@ -374,6 +380,9 @@ static int gen_expr(ir_t *ir, node_t *node) {
   case OP_NOT_EQUAL:
     emit(ir, IR_NEQ, left, right, size);
     break;
+  case OP_LOGIC_AND:
+    emit(ir, IR_LOGAND, left, right, size);
+    break;
   default:
     error("Unknown operator: %d", op);
   }
@@ -430,7 +439,14 @@ int gen_ir(ir_t *ir, node_t *node) {
       size = node->rhs->type->size_deref;
       is_left_ptr = 0;
     }
-    emit(ir, IR_PTR_CAST, (is_left_ptr ? right : left), -1, size);
+    
+    if (size <= 8)
+      emit(ir, IR_PTR_CAST, (is_left_ptr ? right : left), -1, size);
+    else {
+      emit(ir, IR_MOV_IMM, nreg++, size, 8);
+      emit(ir, IR_MUL, (is_left_ptr ? right : left), nreg - 1, 8);
+      nreg--;
+    }
     emit(ir, IR_ADD, left, right, 8);
     if (node->ty == ND_DEREF_INDEX)
       emit(ir, IR_LOAD, left, left, size);
@@ -483,7 +499,10 @@ int gen_ir(ir_t *ir, node_t *node) {
     for (int i = len - 1; i >= 0; i--) {
       node_t *param = vec_get(node->params, i);
       int r = gen_ir(ir, param);
-      emit(ir, IR_STORE_ARG, i, r, param->type->size);
+      if (param->type->ty == TY_ARRAY)
+        emit(ir, IR_STORE_ARG, i, r, 8);
+      else
+        emit(ir, IR_STORE_ARG, i, r, param->type->size);
       nreg--;
     }
     return -1;
@@ -497,11 +516,6 @@ int gen_ir(ir_t *ir, node_t *node) {
 
   if (node->ty == ND_CHARACTER) {
     emit(ir, IR_MOV_IMM, nreg++, node->num, node->type->size);
-    return nreg - 1;
-  }
-
-  if (node->ty == ND_SIZEOF) {
-    emit(ir, IR_MOV_IMM, nreg++, node->type->size, 4);
     return nreg - 1;
   }
 

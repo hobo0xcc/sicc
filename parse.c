@@ -66,6 +66,7 @@ static node_t *mul_expr();
 static node_t *add_expr();
 static node_t *relation_expr();
 static node_t *equal_expr();
+static node_t *logic_and_expr();
 static node_t *assign_expr();
 
 static type_t *type();
@@ -119,33 +120,39 @@ static node_t *primary() {
 }
 
 static node_t *postfix() {
-  node_t *prim = primary();
-  if (equal(peek(0), "[")) {
-    eat();
-    node_t *node = new_node(ND_DEREF_INDEX);
-    node_t *expr = assign_expr();
-    node->lhs = prim;
-    node->rhs = expr;
-    expect(eat(), "]");
-    return node;
-  } else if (equal(peek(0), "(")) {
-    node_t *node = new_node(ND_FUNC_CALL);
-    node->str = prim->str;
-    node->rhs = params();
-    return node;
-  } else if (equal(peek(0), "++")) {
-    eat();
-    node_t *node = new_node(ND_INC_L);
-    node->lhs = prim;
-    return node;
-  } else if (equal(peek(0), "--")) {
-    eat();
-    node_t *node = new_node(ND_DEC_L);
-    node->lhs = prim;
+  node_t *node = primary();
+  for (;;) {
+    if (equal(peek(0), "[")) {
+      node_t *t = new_node(ND_DEREF_INDEX);
+      eat();
+      node_t *expr = assign_expr();
+      t->lhs = node;
+      t->rhs = expr;
+      expect(eat(), "]");
+      node = t;
+      continue;
+    } else if (equal(peek(0), "(")) {
+      node_t *t = new_node(ND_FUNC_CALL);
+      t->str = node->str;
+      t->rhs = params();
+      node = t;
+      continue;
+    } else if (equal(peek(0), "++")) {
+      eat();
+      node_t *t = new_node(ND_INC_L);
+      t->lhs = node;
+      node = t;
+      continue;
+    } else if (equal(peek(0), "--")) {
+      eat();
+      node_t *t = new_node(ND_DEC_L);
+      t->lhs = node;
+      node = t;
+      continue;
+    }
+
     return node;
   }
-
-  return prim;
 }
 
 static node_t *unary() {
@@ -266,8 +273,28 @@ static node_t *equal_expr() {
   return left;
 }
 
-static node_t *assign_expr() {
+static node_t *logic_and_expr() {
   node_t *left = equal_expr();
+  int op;
+  for (;;) {
+    if (equal(peek(0), "&&"))
+      op = OP_LOGIC_AND;
+    else
+      break;
+
+    node_t *node = new_node(ND_EXPR);
+    eat();
+    node_t *right = equal_expr();
+    node->lhs = left;
+    node->op = op;
+    node->rhs = right;
+    left = node;
+  }
+  return left;
+}
+
+static node_t *assign_expr() {
+  node_t *left = logic_and_expr();
   int op;
   for (;;) {
     if (equal(peek(0), "="))
@@ -281,7 +308,7 @@ static node_t *assign_expr() {
 
     node_t *node = new_node(ND_EXPR);
     eat();
-    node_t *right = equal_expr();
+    node_t *right = logic_and_expr();
     node->lhs = left;
     node->op = op;
     node->rhs = right;
@@ -330,16 +357,15 @@ static void decl_init(node_t *node) {
   if (!type_equal(peek(0), TK_IDENT))
     error("Var name expected but got %s", peek(0)->str);
   node->str = eat()->str;
-  if (equal(peek(0), "[")) {
+  type_t *array_elem = node->type;
+  for (; equal(peek(0), "["); array_elem = node->type) { 
     eat();
     if (equal(peek(0), "]")) {
-      type_t *array_elem = node->type;
       node->type = new_type(array_elem->size, TY_ARRAY_NOSIZE);
       node->type->size_deref = array_elem->size;
       node->type->ptr = array_elem;
       eat();
     } else {
-      type_t *array_elem = node->type;
       node_t *expr = assign_expr();
       if (expr->ty != ND_NUM)
         error("Specify an array size with expr is not implemented yet");
@@ -454,7 +480,7 @@ static node_t *stmt() {
     if (!equal(peek(0), ";"))
       loop = assign_expr();
     expect(eat(), ")");
-    body = stmts();
+    body = stmt();
 
     node->init = init;
     node->cond = cond;
@@ -490,17 +516,15 @@ static node_t *arguments() {
   node->args = new_vec();
   expect(eat(), "(");
   while (!equal(peek(0), ")")) {
+    node_t *arg = new_node(ND_VAR_DECL);
     type_t *ty = type();
     if (ty->ty == TY_VOID && equal(peek(0), ")")) {
       eat();
       return node;
     }
-    node_t *name = new_node(ND_VAR_DECL);
-    if (!type_equal(peek(0), TK_IDENT))
-      error("Identifier expected, but got %s", peek(0)->str);
-    name->str = eat()->str;
-    name->type = ty;
-    vec_push(node->args, name);
+    arg->type = ty;
+    decl_init(arg);
+    vec_push(node->args, arg);
     if (equal(peek(0), ")"))
       break;
     expect(eat(), ",");

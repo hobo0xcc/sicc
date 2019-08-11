@@ -211,8 +211,14 @@ void sema_walk(node_t *node, int stat) {
     break;
   case ND_SIZEOF:
     if (!node->type) {
+      node->ty = ND_NUM;
       sema_walk(node->lhs, stat);
-      node->type = node->lhs->type;
+      node->num = node->lhs->type->size;
+      node->type = new_type(4, TY_INT);
+    } else {
+      node->ty = ND_NUM;
+      node->num = node->type->size;
+      node->type = new_type(4, TY_INT);
     }
     break;
   case ND_WHILE:
@@ -241,8 +247,7 @@ void sema_walk(node_t *node, int stat) {
   case ND_DEREF_INDEX_LVAL:
     sema_walk(node->lhs, stat);
     sema_walk(node->rhs, STAT_EXPR);
-    if (node->lhs->ty == ND_IDENT)
-      node->lhs->ty = ND_IDENT_LVAL;
+    to_lval(node->lhs);
     int is_left_ptr = 1;
     if (node->lhs->type->size_deref == 0)
       is_left_ptr = 0;

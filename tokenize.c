@@ -200,7 +200,12 @@ void tokenize(char *s) {
       }
     }
     if (c == '&') {
-      vec_push(tokens, make_token(TK_AND, "&", line));
+      if (*s == '&') {
+        s++;
+        vec_push(tokens, make_token(TK_AND_AND, "&&", line));
+      } else {
+        vec_push(tokens, make_token(TK_AND, "&", line));
+      }
       continue;
     }
     if (c == '[') {
