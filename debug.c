@@ -44,5 +44,7 @@ void debug_ir(char *filename) {
 void debug(char *s) {
   char *str = read_file(s);
   char *p = preprocess(str);
+  tokenize(p);
+  debug_tokens(tokens);
   printf("%s\n", p);
 }

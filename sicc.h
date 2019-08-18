@@ -24,6 +24,8 @@ enum _token_enum {
   TK_NOT,
   TK_AND,
   TK_AND_AND,
+  TK_DOT,
+  TK_ARROW,
 
   TK_LPAREN,
   TK_RPAREN,
@@ -39,6 +41,7 @@ enum _token_enum {
   TK_ELSE,
   TK_WHILE,
   TK_FOR,
+  TK_STRUCT,
 
   TK_SIZEOF,
 
@@ -91,9 +94,9 @@ enum _node_enum {
   ND_CHARACTER,
   ND_SIZEOF,
   ND_DEREF_INDEX,
-  ND_DEREF_LVAL,
-  ND_DEREF_INDEX_LVAL,
-  ND_IDENT_LVAL,
+  // ND_DEREF_LVAL,
+  // ND_DEREF_INDEX_LVAL,
+  // ND_IDENT_LVAL,
   ND_INITIALIZER,
   ND_EXTERNAL,
   ND_EXT_VAR_DEF,
@@ -102,6 +105,8 @@ enum _node_enum {
   ND_DEC_L,
   ND_INC_R,
   ND_DEC_R,
+  ND_DOT,
+  ND_ARROW,
   ND_NOP,
 };
 
@@ -171,7 +176,14 @@ typedef struct _token {
   int line;
 } token_t;
 
+typedef struct _member {
+  map_t *data;
+  map_t *offset;
+  int size;
+} member_t;
+
 typedef struct _type_info {
+  member_t *m;
   int size;
   int ty;
 } type_info_t;
@@ -183,6 +195,7 @@ typedef struct _type {
   char *name;
   int size_deref;
   int array_size;
+  member_t *member;
 } type_t;
 
 typedef struct _flag {

@@ -72,6 +72,8 @@ static node_t *assign_expr();
 static type_t *type();
 static node_t *init();
 static node_t *decl();
+static member_t *struct_declarator();
+static type_t *struct_spec();
 static node_t *ext_decl();
 static node_t *stmt();
 static node_t *stmts();
@@ -135,6 +137,30 @@ static node_t *postfix() {
       node_t *t = new_node(ND_FUNC_CALL);
       t->str = node->str;
       t->rhs = params();
+      node = t;
+      continue;
+    } else if (equal(peek(0), ".")) {
+      eat();
+      node_t *t = new_node(ND_DOT);
+      t->lhs = node;
+      token_t *name = eat();
+      if (name->ty != TK_IDENT) {
+        error("Identifier expected but got %s: line %s", 
+            name->str, name->line);
+      }
+      t->str = name->str;
+      node = t;
+      continue;
+    } else if (equal(peek(0), "->")) {
+      eat();
+      node_t *t = new_node(ND_ARROW);
+      t->lhs = node;
+      token_t *name = eat();
+      if (name->ty != TK_IDENT) {
+        error("Identifier expected but got %s: line %s", 
+            name->str, name->line);
+      }
+      t->str = name->str;
       node = t;
       continue;
     } else if (equal(peek(0), "++")) {
@@ -318,10 +344,15 @@ static node_t *assign_expr() {
 }
 
 static type_t *type() {
-  char *type_name = peek(0)->str;
-  type_info_t *info = (type_info_t *)map_get(types, type_name);
-  type_t *type = new_type(info->size, info->ty);
-  eat();
+  type_t *type;
+  if (equal(peek(0), "struct")) {
+    type = struct_spec();
+  } else {
+    char *type_name = peek(0)->str;
+    type_info_t *info = (type_info_t *)map_get(types, type_name);
+    type = new_type(info->size, info->ty);
+    eat();
+  }
 
   while (equal(peek(0), "*")) {
     eat();
@@ -354,7 +385,8 @@ static node_t *init() {
 }
 
 static void decl_init(node_t *node) {
-  if (!type_equal(peek(0), TK_IDENT))
+  token_t *tk = peek(0);
+  if (!type_equal(tk, TK_IDENT))
     error("Var name expected but got %s", peek(0)->str);
   node->str = eat()->str;
   type_t *array_elem = node->type;
@@ -383,6 +415,8 @@ static void decl_init(node_t *node) {
 static node_t *decl() {
   node_t *node = new_node(ND_VAR_DEF);
   node->type = type();
+  if (node->type->ty == TY_STRUCT && peek(0)->ty == TK_SEMICOLON)
+    return new_node(ND_NOP);
   decl_init(node);
   if (!equal(peek(0), "=")) {
     node->ty = ND_VAR_DECL;
@@ -417,6 +451,69 @@ static node_t *decl_list() {
   }
 
   return node;
+}
+
+static member_t *struct_declarator() {
+  expect(eat(), "{");
+  member_t *m = calloc(1, sizeof(member_t));
+  m->data = new_map();
+  m->offset = new_map();
+  while (!equal(peek(0), "}")) {
+    node_t *node = decl();
+    if (node->ty != ND_VAR_DECL &&
+        node->ty != ND_VAR_DECL_LIST) {
+      error("Variable declaration expected: line %d", peek(0)->line);
+    }
+    if (node->ty == ND_VAR_DECL_LIST) {
+      int len = vec_len(node->vars);
+      for (int i = 0; i < len; i++) {
+        node_t *var = vec_get(node->vars, i);
+        map_put(m->data, var->str, var->type);
+        map_put(m->offset, var->str, (void *)(intptr_t)m->size);
+        m->size += var->type->size;
+      }
+    } else {
+      map_put(m->data, node->str, node->type);
+      map_put(m->offset, node->str, (void *)(intptr_t)m->size);
+      m->size += node->type->size;
+    }
+
+    expect(eat(), ";");
+  }
+
+  expect(eat(), "}");
+  return m;
+}
+
+static type_t *struct_spec() {
+  expect(eat(), "struct");
+  token_t *tk = peek(0);
+  if (tk->ty == TK_IDENT) {
+    if (peek(1)->ty != TK_LBRACE) {
+      type_info_t *info = map_get(types, eat()->str);
+      type_t *ty = new_type(info->size, info->ty);
+      ty->member = info->m;
+      return ty;
+    }
+    eat();
+    member_t *m = struct_declarator();
+    type_info_t *info = new_type_info(m->size, TY_STRUCT);
+    info->m = m;
+    map_put(types, tk->str, info);
+    type_t *type = new_type(info->size, info->ty);
+    type->member = info->m;
+    return type;
+  } else if (tk->ty == TK_LBRACE) {
+    member_t *m = struct_declarator();
+    type_info_t *info = new_type_info(m->size, TY_STRUCT);
+    info->m = m;
+    type_t *type = new_type(info->size, info->ty);
+    type->member = info->m;
+    return type;
+  } else {
+    error("Variable name expected but got %s", tk->str);
+    return NULL;
+  }
 }
 
 static node_t *ext_decl() {
@@ -490,7 +587,7 @@ static node_t *stmt() {
     return node;
   } else if (type_equal(peek(0), TK_LBRACE)) {
     return stmts();
-  } else if (map_find(types, peek(0)->str)) {
+  } else if (map_find(types, peek(0)->str) || type_equal(peek(0), TK_STRUCT)) {
     node_t *node = decl_list();
     expect(eat(), ";");
     return node;

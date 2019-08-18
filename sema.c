@@ -11,19 +11,16 @@ static enum {
   STAT_EXPR,
 } _sema_stat;
 
+// Map of global variable types
 static map_t *gvar_types;
+// Map of global function types
 static map_t *gfuncs;
+// Map of Local varialbe types
 static map_t *var_types;
 
-static void to_lval(node_t *node) {
-  if (node->ty == ND_DEREF)
-    node->ty = ND_DEREF_LVAL;
-  else if (node->ty == ND_DEREF_INDEX)
-    node->ty = ND_DEREF_INDEX_LVAL;
-  else if (node->ty == ND_IDENT)
-    node->ty = ND_IDENT_LVAL;
-}
-
+// Searching Global/Local Variable types
+// If the variable is local, that returns 1
+// If the variable is global, that returns 2
 static int find_var_types(char *str) {
   if (map_find(var_types, str))
     return 1;
@@ -40,6 +37,8 @@ static type_t *get_var_types(char *str) {
   return NULL;
 }
 
+// Walking of Semantic Phase
+// `stat` is a state that indicates information of where current node is in
 void sema_walk(node_t *node, int stat) {
   node->flag = calloc(1, sizeof(flag_t));
   switch (node->ty) {
@@ -102,15 +101,7 @@ void sema_walk(node_t *node, int stat) {
   case ND_EXPR:
     sema_walk(node->lhs, STAT_EXPR);
     sema_walk(node->rhs, STAT_EXPR);
-    node->type = node->lhs->type;
-    if (node->lhs->ty == ND_IDENT &&
-        (node->op == '=' || node->op == OP_PLUS_ASSIGN ||
-         node->op == OP_MINUS_ASSIGN))
-      node->lhs->ty = ND_IDENT_LVAL;
-    else if (node->lhs->ty == ND_DEREF && node->op == '=')
-      node->lhs->ty = ND_DEREF_LVAL;
-    else if (node->lhs->ty == ND_DEREF_INDEX && node->op == '=')
-      node->lhs->ty = ND_DEREF_INDEX_LVAL;
+    node->type = node->lhs->type;;
     break;
   case ND_RETURN:
     sema_walk(node->lhs, STAT_EXPR);
@@ -176,21 +167,12 @@ void sema_walk(node_t *node, int stat) {
     }
     break;
   case ND_DEREF:
-  case ND_DEREF_LVAL:
     sema_walk(node->lhs, STAT_EXPR);
     node->str = node->lhs->str;
     node->type = node->lhs->type->ptr;
     break;
   case ND_REF:
     sema_walk(node->lhs, STAT_EXPR);
-    if (node->lhs->ty == ND_IDENT)
-      node->lhs->ty = ND_IDENT_LVAL;
-    else if (node->lhs->ty == ND_DEREF_INDEX)
-      node->lhs->ty = ND_DEREF_INDEX_LVAL;
-    else if (node->lhs->ty == ND_DEREF)
-      node->lhs->ty = ND_DEREF_LVAL;
-    else
-      error("Reference operator requires variable");
     node->type->ptr = node->lhs->type;
     node->type->size_deref = node->lhs->type->size;
     break;
@@ -226,9 +208,9 @@ void sema_walk(node_t *node, int stat) {
     sema_walk(node->lhs, STAT_WHILE);
     break;
   case ND_FOR:
-    sema_walk(node->init, STAT_FOR);
-    sema_walk(node->cond, STAT_FOR);
-    sema_walk(node->loop, STAT_FOR);
+    sema_walk(node->init, STAT_EXPR);
+    sema_walk(node->cond, STAT_EXPR);
+    sema_walk(node->loop, STAT_EXPR);
     sema_walk(node->body, STAT_FOR);
 
     if (node->init->ty >= ND_VAR_DEF &&
@@ -244,10 +226,8 @@ void sema_walk(node_t *node, int stat) {
     }
     break;
   case ND_DEREF_INDEX:
-  case ND_DEREF_INDEX_LVAL:
     sema_walk(node->lhs, stat);
     sema_walk(node->rhs, STAT_EXPR);
-    to_lval(node->lhs);
     int is_left_ptr = 1;
     if (node->lhs->type->size_deref == 0)
       is_left_ptr = 0;
@@ -263,12 +243,30 @@ void sema_walk(node_t *node, int stat) {
   case ND_INC_L:
     sema_walk(node->lhs, STAT_EXPR);
     node->type = node->lhs->type;
-    to_lval(node->lhs);
+    if (stat == STAT_EXPR)
+      node->flag->should_save = true;
+    else
+      node->flag->should_save = false;
     break;
   case ND_DEC_L:
     sema_walk(node->lhs, STAT_EXPR);
     node->type = node->lhs->type;
-    to_lval(node->lhs);
+    if (stat == STAT_EXPR)
+      node->flag->should_save = true;
+    else
+      node->flag->should_save = false;
+    break;
+  case ND_DOT:
+    sema_walk(node->lhs, stat);
+    if (node->lhs->type->ty != TY_STRUCT)
+      error("Dot operator cannot be used for what a type that's not a struct.");
+    node->type = map_get(node->lhs->type->member->data, node->str);
+    break;
+  case ND_ARROW:
+    sema_walk(node->lhs, stat);
+    if (node->lhs->type->ty != TY_PTR || node->lhs->type->ptr->ty != TY_STRUCT)
+      error("Arrow operator cannot be used for what a type that's not a pointer which references to struct.");
+    node->type = map_get(node->lhs->type->ptr->member->data, node->str);
     break;
   default:
     break;

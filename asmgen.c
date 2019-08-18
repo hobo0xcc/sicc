@@ -75,20 +75,26 @@ static const char *get_arg_reg(int n, int size) {
 
 void gen_asm(ir_t *ir) {
   int len = vec_len(ir->code);
+  // Number of global functions
   int ngfuncs = vec_len(ir->gfuncs);
   emit(".intel_syntax noprefix");
+  // Globalize functions
   for (int i = 0; i < ngfuncs; i++) {
     emit(".global _%s", vec_get(ir->gfuncs, i));
   }
 
+  // Number of global variables
   int ngvars = map_len(ir->gvars);
   emit(".section __DATA,_data");
   for (int i = 0; i < ngvars; i++) {
     gvar_t *gvar = vec_get(ir->gvars->items, i);
+    // Definition of uninitialized global variable
     if (gvar->is_null) {
+      // http://web.mit.edu/gnu/doc/html/as_7.html#SEC74
       emit("  .comm _%s, %d", gvar->name, gvar->size);
     } else {
       if (gvar->init->ty == ND_NUM) {
+        // http://web.mit.edu/gnu/doc/html/as_7.html#SEC102
         emit("  _%s: \n  .long %d", gvar->name, gvar->init->num);
       } else {
         error("Global variable initializer that other than number is "
@@ -96,7 +102,8 @@ void gen_asm(ir_t *ir) {
       }
     }
   }
-
+  
+  // Number of constant strings
   int nconsts = vec_len(ir->const_str);
   emit(".section __TEXT,__cstring");
   for (int i = 0; i < nconsts; i++) {

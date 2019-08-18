@@ -12,7 +12,8 @@ static struct keyword {
 } keywords[] = {
     {"return", TK_RETURN}, {"if", TK_IF},     {"else", TK_ELSE},
     {"int", TK_INT},       {"char", TK_CHAR}, {"while", TK_WHILE},
-    {"sizeof", TK_SIZEOF}, {"for", TK_FOR},   {NULL, 0},
+    {"sizeof", TK_SIZEOF}, {"for", TK_FOR},   {"struct", TK_STRUCT},
+    {NULL, 0},
 };
 
 static int check_ident_type(char *str) {
@@ -103,6 +104,9 @@ void tokenize(char *s) {
       } else if (*s == '-') {
         vec_push(tokens, make_token(TK_MINUS_MINUS, "--", line));
         s++;
+      } else if (*s == '>') {
+        vec_push(tokens, make_token(TK_ARROW, "->", line));
+        s++;
       } else {
         vec_push(tokens, make_token(TK_MINUS, "-", line));
       }
@@ -171,6 +175,10 @@ void tokenize(char *s) {
     }
     if (c == ',') {
       vec_push(tokens, make_token(TK_COMMA, ",", line));
+      continue;
+    }
+    if (c == '.') {
+      vec_push(tokens, make_token(TK_DOT, ".", line));
       continue;
     }
     if (c == '\"') {
