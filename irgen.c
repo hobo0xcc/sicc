@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 static int nreg = 0;
-static int nlabel = 0;
+static int nlabel = 1;
 static int stack_size = 0;
 static int cur_stack = 0;
 
@@ -14,6 +14,7 @@ ir_t *new_ir() {
   ir->vars = new_map();
   ir->gfuncs = new_vec();
   ir->const_str = new_vec();
+  ir->labels = new_map();
   return ir;
 }
 
@@ -360,6 +361,19 @@ static void gen_stmt(ir_t *ir, node_t *node) {
     gvar->is_null = 1;
     gvar->init = NULL;
     map_put(ir->gvars, node->str, gvar);
+    return;
+  }
+  if (node->ty == ND_LABEL) {
+    int label = nlabel++;
+    emit(ir, IR_LABEL, label, -1, -1);
+    map_put(ir->labels, node->str, (void *)(intptr_t)label);
+    return;
+  }
+  if (node->ty == ND_GOTO) {
+    int label = (int)(intptr_t)map_get(ir->labels, node->str);
+    if (!label)
+      error("label '%s' not found", node->str);
+    emit(ir, IR_JMP, label, -1, -1);
     return;
   }
 

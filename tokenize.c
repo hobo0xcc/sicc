@@ -13,7 +13,7 @@ static struct keyword {
     {"return", TK_RETURN}, {"if", TK_IF},     {"else", TK_ELSE},
     {"int", TK_INT},       {"char", TK_CHAR}, {"while", TK_WHILE},
     {"sizeof", TK_SIZEOF}, {"for", TK_FOR},   {"struct", TK_STRUCT},
-    {"typedef", TK_TYPEDEF},
+    {"typedef", TK_TYPEDEF}, {"goto", TK_GOTO},
     {NULL, 0},
 };
 
@@ -172,6 +172,10 @@ void tokenize(char *s) {
     }
     if (c == ';') {
       vec_push(tokens, make_token(TK_SEMICOLON, ";", line));
+      continue;
+    }
+    if (c == ':') {
+      vec_push(tokens, make_token(TK_COLON, ":", line));
       continue;
     }
     if (c == ',') {

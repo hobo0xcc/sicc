@@ -34,6 +34,7 @@ enum _token_enum {
   TK_LBRACKET,
   TK_RBRACKET,
   TK_SEMICOLON,
+  TK_COLON,
   TK_COMMA,
 
   TK_RETURN,
@@ -43,6 +44,7 @@ enum _token_enum {
   TK_FOR,
   TK_STRUCT,
   TK_TYPEDEF,
+  TK_GOTO,
 
   TK_SIZEOF,
 
@@ -108,6 +110,8 @@ enum _node_enum {
   ND_DEC_R,
   ND_DOT,
   ND_ARROW,
+  ND_LABEL,
+  ND_GOTO,
   ND_NOP,
 };
 
@@ -255,6 +259,7 @@ typedef struct _ir {
   map_t *vars;      // var_t map
   vec_t *gfuncs;    // char * list
   vec_t *const_str; // char * list
+  map_t *labels;
   int len;          // code length
   int stack_size;   // max stack size in function
 } ir_t;

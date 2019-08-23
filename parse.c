@@ -68,6 +68,7 @@ static node_t *relation_expr();
 static node_t *equal_expr();
 static node_t *logic_and_expr();
 static node_t *assign_expr();
+static node_t *const_expr();
 
 static type_t *type();
 static node_t *init();
@@ -344,6 +345,10 @@ static node_t *assign_expr() {
   return left;
 }
 
+static node_t *const_expr() {
+  return logic_and_expr();
+}
+
 static type_t *type() {
   type_t *type;
   if (equal(peek(0), "struct")) {
@@ -602,6 +607,22 @@ static node_t *stmt() {
     return node;
   } else if (type_equal(peek(0), TK_LBRACE)) {
     return stmts();
+  } else if (type_equal(peek(0), TK_IDENT) &&
+      peek(1)->ty == TK_COLON) {
+    node_t *node = new_node(ND_LABEL);
+    node->str = eat()->str;
+    eat();
+    return node;
+  } else if (type_equal(peek(0), TK_GOTO)) {
+    eat();
+    node_t *node = new_node(ND_GOTO);
+    if (!type_equal(peek(0), TK_IDENT)) {
+      token_t *tk = peek(0);
+      error("Identifier expected but got %s: line %d\n", tk->str, tk->line);
+    }
+    node->str = eat()->str;
+    expect(eat(), ";");
+    return node;
   } else if (map_find(types, peek(0)->str) ||
       type_equal(peek(0), TK_STRUCT) ||
       type_equal(peek(0), TK_TYPEDEF)) {
