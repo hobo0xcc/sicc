@@ -42,6 +42,7 @@ enum _token_enum {
   TK_WHILE,
   TK_FOR,
   TK_STRUCT,
+  TK_TYPEDEF,
 
   TK_SIZEOF,
 

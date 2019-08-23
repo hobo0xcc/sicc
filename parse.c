@@ -74,6 +74,7 @@ static node_t *init();
 static node_t *decl();
 static member_t *struct_declarator();
 static type_t *struct_spec();
+static type_t *typedef_spec();
 static node_t *ext_decl();
 static node_t *stmt();
 static node_t *stmts();
@@ -347,10 +348,13 @@ static type_t *type() {
   type_t *type;
   if (equal(peek(0), "struct")) {
     type = struct_spec();
+  } else if (equal(peek(0), "typedef")) {
+    return typedef_spec();
   } else {
     char *type_name = peek(0)->str;
     type_info_t *info = (type_info_t *)map_get(types, type_name);
     type = new_type(info->size, info->ty);
+    type->member = info->m;
     eat();
   }
 
@@ -415,7 +419,7 @@ static void decl_init(node_t *node) {
 static node_t *decl() {
   node_t *node = new_node(ND_VAR_DEF);
   node->type = type();
-  if (node->type->ty == TY_STRUCT && peek(0)->ty == TK_SEMICOLON)
+  if (peek(0)->ty == TK_SEMICOLON)
     return new_node(ND_NOP);
   decl_init(node);
   if (!equal(peek(0), "=")) {
@@ -516,6 +520,17 @@ static type_t *struct_spec() {
   }
 }
 
+static type_t *typedef_spec() {
+  expect(eat(), "typedef");
+  node_t *node = decl();
+  if (node->str == NULL)
+    return node->type;
+  type_info_t *info = new_type_info(node->type->size, node->type->ty);
+  info->m = node->type->member;
+  map_put(types, node->str, info);
+  return node->type;
+}
+
 static node_t *ext_decl() {
   node_t *node = decl();
   if (node->ty == ND_VAR_DECL)
@@ -587,7 +602,9 @@ static node_t *stmt() {
     return node;
   } else if (type_equal(peek(0), TK_LBRACE)) {
     return stmts();
-  } else if (map_find(types, peek(0)->str) || type_equal(peek(0), TK_STRUCT)) {
+  } else if (map_find(types, peek(0)->str) ||
+      type_equal(peek(0), TK_STRUCT) ||
+      type_equal(peek(0), TK_TYPEDEF)) {
     node_t *node = decl_list();
     expect(eat(), ";");
     return node;

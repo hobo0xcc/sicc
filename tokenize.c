@@ -13,6 +13,7 @@ static struct keyword {
     {"return", TK_RETURN}, {"if", TK_IF},     {"else", TK_ELSE},
     {"int", TK_INT},       {"char", TK_CHAR}, {"while", TK_WHILE},
     {"sizeof", TK_SIZEOF}, {"for", TK_FOR},   {"struct", TK_STRUCT},
+    {"typedef", TK_TYPEDEF},
     {NULL, 0},
 };
 
