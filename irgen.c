@@ -4,6 +4,8 @@
 
 static int nreg = 0;
 static int nlabel = 1;
+static int nbblabel = 1;
+static int nbblabel_end = 1;
 static int stack_size = 0;
 static int cur_stack = 0;
 
@@ -252,33 +254,36 @@ static void gen_stmt(ir_t *ir, node_t *node) {
     return;
   }
   if (node->ty == ND_WHILE) {
-    int eval = nlabel++;
-    int prog = nlabel++;
-    emit(ir, IR_JMP, eval, -1, -1);
-    emit(ir, IR_LABEL, prog, -1, -1);
+    int eval = nbblabel++;
+    int prog = nbblabel++;
+    int end = nbblabel_end++;
+
+    emit(ir, IR_JMP_BB, eval, -1, -1);
+    emit(ir, IR_LABEL_BB, prog, -1, -1);
     gen_ir(ir, node->lhs);
-    emit(ir, IR_LABEL, eval, -1, -1);
+    emit(ir, IR_LABEL_BB, eval, -1, -1);
     int r = gen_ir(ir, node->rhs);
-    emit(ir, IR_JTRUE, r, prog, -1);
+    emit(ir, IR_JTRUE_BB, r, prog, -1);
     nreg--;
+    emit(ir, IR_LABEL_BBEND, end, -1, -1);
     return;
   }
   if (node->ty == ND_FOR) {
-    int cond = nlabel++;
-    int end = nlabel++;
+    int cond = nbblabel++;
+    int end = nbblabel_end++;
     
     gen_ir(ir, node->init);
-    emit(ir, IR_LABEL, cond, -1, -1);
+    emit(ir, IR_LABEL_BB, cond, -1, -1);
     int r = gen_ir(ir, node->cond);
     if (r != -1) {
-      emit(ir, IR_JZERO, r, end, -1);
+      emit(ir, IR_JZERO_BBEND, r, end, -1);
       nreg--;
     }
     gen_ir(ir, node->body);
     if (gen_ir(ir, node->loop) != -1)
       nreg--;
-    emit(ir, IR_JMP, cond, -1, -1);
-    emit(ir, IR_LABEL, end, -1, -1);
+    emit(ir, IR_JMP_BB, cond, -1, -1);
+    emit(ir, IR_LABEL_BBEND, end, -1, -1);
 
     if (node->init->ty >= ND_VAR_DEF &&
         node->init->ty <= ND_EXT_VAR_DECL) {
@@ -374,6 +379,37 @@ static void gen_stmt(ir_t *ir, node_t *node) {
     if (!label)
       error("label '%s' not found", node->str);
     emit(ir, IR_JMP, label, -1, -1);
+    return;
+  }
+  if (node->ty == ND_SWITCH) {
+    int end = nbblabel_end++;
+    int r = gen_ir(ir, node->lhs);
+    emit(ir, IR_PUSH, r, -1, -1);
+    nreg--;
+    gen_stmt(ir, node->rhs);
+    emit(ir, IR_LABEL_BBEND, end, -1, -1);
+    return;
+  }
+  if (node->ty == ND_CASE) {
+    emit(ir, IR_LABEL_BB, nbblabel++, -1, -1);
+    int r = nreg++;
+    emit(ir, IR_POP, r, -1, -1);
+    int value = gen_ir(ir, node->lhs);
+    emit(ir, IR_PUSH, r, -1, -1);
+    emit(ir, IR_EQ, value, r, 8);
+    emit(ir, IR_JZERO_BB, value, nbblabel, -1);
+    nreg -= 2;
+    return;
+  }
+  if (node->ty == ND_DEFAULT) {
+    emit(ir, IR_LABEL_BB, nbblabel++, -1, -1);
+    int _r = nreg++;
+    emit(ir, IR_POP, _r, -1, -1);
+    nreg--;
+    return;
+  }
+  if (node->ty == ND_BREAK) {
+    emit(ir, IR_JMP_BBEND, nbblabel_end - 1, -1, -1);
     return;
   }
 

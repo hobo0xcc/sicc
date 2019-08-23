@@ -181,6 +181,12 @@ void gen_asm(ir_t *ir) {
     case IR_LABEL:
       emit(".L%d:", lhs);
       break;
+    case IR_LABEL_BB:
+      emit(".LBB%d: ", lhs);
+      break;
+    case IR_LABEL_BBEND:
+      emit(".LBB_END%d: ", lhs);
+      break;
     case IR_ALLOC:
       emit("  sub rsp, %d", lhs);
       break;
@@ -196,12 +202,34 @@ void gen_asm(ir_t *ir) {
       emit("  test %s, %s", regs[lhs], regs[lhs]);
       emit("  jnz .L%d", rhs);
       break;
+    case IR_JTRUE_BB:
+      emit("  test %s, %s", regs[lhs], regs[lhs]);
+      emit("  jnz .LBB%d", rhs);
+      break;
+    case IR_JTRUE_BBEND:
+      emit("  test %s, %s", regs[lhs], regs[lhs]);
+      emit("  jnz .LBB_END%d", rhs);
+      break;
     case IR_JZERO:
       emit("  test %s, %s", regs[lhs], regs[lhs]);
       emit("  jz .L%d", rhs);
       break;
+    case IR_JZERO_BB:
+      emit("  test %s, %s", regs[lhs], regs[lhs]);
+      emit("  jz .LBB%d", rhs);
+      break;
+    case IR_JZERO_BBEND:
+      emit("  test %s, %s", regs[lhs], regs[lhs]);
+      emit("  jz .LBB_END%d", rhs);
+      break;
     case IR_JMP:
       emit("  jmp .L%d", lhs);
+      break;
+    case IR_JMP_BB:
+      emit("  jmp .LBB%d", lhs);
+      break;
+    case IR_JMP_BBEND:
+      emit("  jmp .LBB_END%d", lhs);
       break;
     case IR_STORE_VAR:
       emit("  mov %s [rbp%+d], %s", ptr_size(ins), -lhs, REG(rhs));

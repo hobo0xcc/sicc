@@ -605,6 +605,14 @@ static node_t *stmt() {
     node->body = body;
 
     return node;
+  } else if (type_equal(peek(0), TK_SWITCH)) {
+    node_t *node = new_node(ND_SWITCH);
+    eat();
+    expect(eat(), "(");
+    node->lhs = assign_expr();
+    expect(eat(), ")");
+    node->rhs = stmt();
+    return node;
   } else if (type_equal(peek(0), TK_LBRACE)) {
     return stmts();
   } else if (type_equal(peek(0), TK_IDENT) &&
@@ -621,6 +629,22 @@ static node_t *stmt() {
       error("Identifier expected but got %s: line %d\n", tk->str, tk->line);
     }
     node->str = eat()->str;
+    expect(eat(), ";");
+    return node;
+  } else if (type_equal(peek(0), TK_CASE)) {
+    node_t *node = new_node(ND_CASE);
+    eat();
+    node->lhs = const_expr();
+    expect(eat(), ":");
+    return node;
+  } else if (type_equal(peek(0), TK_DEFAULT)) {
+    node_t *node = new_node(ND_DEFAULT);
+    eat();
+    expect(eat(), ":");
+    return node;
+  } else if (type_equal(peek(0), TK_BREAK)) {
+    node_t *node = new_node(ND_BREAK);
+    eat();
     expect(eat(), ";");
     return node;
   } else if (map_find(types, peek(0)->str) ||

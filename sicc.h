@@ -45,6 +45,10 @@ enum _token_enum {
   TK_STRUCT,
   TK_TYPEDEF,
   TK_GOTO,
+  TK_SWITCH,
+  TK_CASE,
+  TK_DEFAULT,
+  TK_BREAK,
 
   TK_SIZEOF,
 
@@ -112,6 +116,10 @@ enum _node_enum {
   ND_ARROW,
   ND_LABEL,
   ND_GOTO,
+  ND_SWITCH,
+  ND_CASE,
+  ND_DEFAULT,
+  ND_BREAK,
   ND_NOP,
 };
 
@@ -131,6 +139,8 @@ enum _ir_enum {
   IR_CALL,       // Call function
   IR_FUNC,       // Function
   IR_LABEL,      // Label
+  IR_LABEL_BB,
+  IR_LABEL_BBEND,
   IR_ALLOC,      // Alloc vars
   IR_FREE,       // Free vars
   IR_RET,        // Return register
@@ -138,8 +148,14 @@ enum _ir_enum {
   // IR_SAVE_REG,      Save register
   // IR_REST_REG,      Restore register
   IR_JMP,       // Jmp
+  IR_JMP_BB,
+  IR_JMP_BBEND,
   IR_JTRUE,     // Jmp if true(1)
+  IR_JTRUE_BB,
+  IR_JTRUE_BBEND,
   IR_JZERO,     // Jmp if zero
+  IR_JZERO_BB,
+  IR_JZERO_BBEND,
   IR_STORE_VAR, // Store reg to var
   IR_LOAD_VAR,  // Load var to reg
   IR_LOAD_ADDR,

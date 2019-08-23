@@ -8,6 +8,7 @@ static enum {
   STAT_FUNC,
   STAT_WHILE,
   STAT_FOR,
+  STAT_SWITCH,
   STAT_EXPR,
 } _sema_stat;
 
@@ -40,6 +41,8 @@ static type_t *get_var_types(char *str) {
 // Walking of Semantic Phase
 // `stat` is a state that indicates information of where current node is in
 void sema_walk(node_t *node, int stat) {
+  if (!node)
+    return;
   node->flag = calloc(1, sizeof(flag_t));
   switch (node->ty) {
   case ND_EXTERNAL:
@@ -267,6 +270,25 @@ void sema_walk(node_t *node, int stat) {
     if (node->lhs->type->ty != TY_PTR || node->lhs->type->ptr->ty != TY_STRUCT)
       error("Arrow operator cannot be used for what a type that's not a pointer which references to struct.");
     node->type = map_get(node->lhs->type->ptr->member->data, node->str);
+    break;
+  case ND_SWITCH:
+    sema_walk(node->lhs, STAT_EXPR);
+    sema_walk(node->rhs, STAT_SWITCH);
+    break;
+  case ND_CASE:
+    if (stat != STAT_SWITCH) {
+      error("'case' label can only be used in switch statement.");
+    }
+    sema_walk(node->lhs, STAT_EXPR);
+    break;
+  case ND_DEFAULT:
+    if (stat != STAT_SWITCH) {
+      error("'default' label can only be used in switch statement.");
+    }
+    break;
+  case ND_BREAK:
+    if (!(stat == STAT_FOR || stat == STAT_WHILE || stat == STAT_SWITCH))
+      error("'break' label can only be used in for, while or switch.");
     break;
   default:
     break;
