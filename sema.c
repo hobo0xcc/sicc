@@ -104,7 +104,8 @@ void sema_walk(node_t *node, int stat) {
   case ND_EXPR:
     sema_walk(node->lhs, STAT_EXPR);
     sema_walk(node->rhs, STAT_EXPR);
-    node->type = node->lhs->type;;
+    node->type = node->lhs->type;
+    ;
     break;
   case ND_RETURN:
     sema_walk(node->lhs, STAT_EXPR);
@@ -216,8 +217,7 @@ void sema_walk(node_t *node, int stat) {
     sema_walk(node->loop, STAT_EXPR);
     sema_walk(node->body, STAT_FOR);
 
-    if (node->init->ty >= ND_VAR_DEF &&
-        node->init->ty <= ND_EXT_VAR_DECL) {
+    if (node->init->ty >= ND_VAR_DEF && node->init->ty <= ND_EXT_VAR_DECL) {
       if (node->init->ty == ND_VAR_DECL_LIST) {
         int len = vec_len(node->init->vars);
         for (int i = 0; i < len; i++) {
@@ -268,7 +268,8 @@ void sema_walk(node_t *node, int stat) {
   case ND_ARROW:
     sema_walk(node->lhs, stat);
     if (node->lhs->type->ty != TY_PTR || node->lhs->type->ptr->ty != TY_STRUCT)
-      error("Arrow operator cannot be used for what a type that's not a pointer which references to struct.");
+      error("Arrow operator cannot be used for what a type that's not a "
+            "pointer which references to struct.");
     node->type = map_get(node->lhs->type->ptr->member->data, node->str);
     break;
   case ND_SWITCH:

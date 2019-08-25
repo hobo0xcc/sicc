@@ -141,19 +141,19 @@ enum _ir_enum {
   IR_LABEL,      // Label
   IR_LABEL_BB,
   IR_LABEL_BBEND,
-  IR_ALLOC,      // Alloc vars
-  IR_FREE,       // Free vars
-  IR_RET,        // Return register
-  IR_RET_NONE,   // Return none
+  IR_ALLOC,    // Alloc vars
+  IR_FREE,     // Free vars
+  IR_RET,      // Return register
+  IR_RET_NONE, // Return none
   // IR_SAVE_REG,      Save register
   // IR_REST_REG,      Restore register
-  IR_JMP,       // Jmp
+  IR_JMP, // Jmp
   IR_JMP_BB,
   IR_JMP_BBEND,
-  IR_JTRUE,     // Jmp if true(1)
+  IR_JTRUE, // Jmp if true(1)
   IR_JTRUE_BB,
   IR_JTRUE_BBEND,
-  IR_JZERO,     // Jmp if zero
+  IR_JZERO, // Jmp if zero
   IR_JZERO_BB,
   IR_JZERO_BBEND,
   IR_STORE_VAR, // Store reg to var
@@ -276,8 +276,8 @@ typedef struct _ir {
   vec_t *gfuncs;    // char * list
   vec_t *const_str; // char * list
   map_t *labels;
-  int len;          // code length
-  int stack_size;   // max stack size in function
+  int len;        // code length
+  int stack_size; // max stack size in function
 } ir_t;
 
 extern vec_t *tokens;

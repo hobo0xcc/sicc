@@ -55,7 +55,7 @@ void vec_push(vec_t *v, void *p) {
   v->data[v->len++] = p;
 }
 
-void vec_pop(vec_t *v) { 
+void vec_pop(vec_t *v) {
   v->len -= 1;
   v->data[v->len] = NULL;
 }

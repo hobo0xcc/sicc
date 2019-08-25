@@ -147,8 +147,7 @@ static node_t *postfix() {
       t->lhs = node;
       token_t *name = eat();
       if (name->ty != TK_IDENT) {
-        error("Identifier expected but got %s: line %s", 
-            name->str, name->line);
+        error("Identifier expected but got %s: line %s", name->str, name->line);
       }
       t->str = name->str;
       node = t;
@@ -159,8 +158,7 @@ static node_t *postfix() {
       t->lhs = node;
       token_t *name = eat();
       if (name->ty != TK_IDENT) {
-        error("Identifier expected but got %s: line %s", 
-            name->str, name->line);
+        error("Identifier expected but got %s: line %s", name->str, name->line);
       }
       t->str = name->str;
       node = t;
@@ -345,9 +343,7 @@ static node_t *assign_expr() {
   return left;
 }
 
-static node_t *const_expr() {
-  return logic_and_expr();
-}
+static node_t *const_expr() { return logic_and_expr(); }
 
 static type_t *type() {
   type_t *type;
@@ -399,7 +395,7 @@ static void decl_init(node_t *node) {
     error("Var name expected but got %s", peek(0)->str);
   node->str = eat()->str;
   type_t *array_elem = node->type;
-  for (; equal(peek(0), "["); array_elem = node->type) { 
+  for (; equal(peek(0), "["); array_elem = node->type) {
     eat();
     if (equal(peek(0), "]")) {
       node->type = new_type(array_elem->size, TY_ARRAY_NOSIZE);
@@ -469,8 +465,7 @@ static member_t *struct_declarator() {
   m->offset = new_map();
   while (!equal(peek(0), "}")) {
     node_t *node = decl();
-    if (node->ty != ND_VAR_DECL &&
-        node->ty != ND_VAR_DECL_LIST) {
+    if (node->ty != ND_VAR_DECL && node->ty != ND_VAR_DECL_LIST) {
       error("Variable declaration expected: line %d", peek(0)->line);
     }
     if (node->ty == ND_VAR_DECL_LIST) {
@@ -615,8 +610,7 @@ static node_t *stmt() {
     return node;
   } else if (type_equal(peek(0), TK_LBRACE)) {
     return stmts();
-  } else if (type_equal(peek(0), TK_IDENT) &&
-      peek(1)->ty == TK_COLON) {
+  } else if (type_equal(peek(0), TK_IDENT) && peek(1)->ty == TK_COLON) {
     node_t *node = new_node(ND_LABEL);
     node->str = eat()->str;
     eat();
@@ -647,9 +641,8 @@ static node_t *stmt() {
     eat();
     expect(eat(), ";");
     return node;
-  } else if (map_find(types, peek(0)->str) ||
-      type_equal(peek(0), TK_STRUCT) ||
-      type_equal(peek(0), TK_TYPEDEF)) {
+  } else if (map_find(types, peek(0)->str) || type_equal(peek(0), TK_STRUCT) ||
+             type_equal(peek(0), TK_TYPEDEF)) {
     node_t *node = decl_list();
     expect(eat(), ";");
     return node;

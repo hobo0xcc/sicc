@@ -12,8 +12,8 @@
 #define AX 7
 #define DI 8
 
-static const char *regs[] = {"r10", "r11", "rbx", "r12",
-                             "r13", "r14", "r15", "rax", "rdi"};
+static const char *regs[] = {"r10", "r11", "rbx", "r12", "r13",
+                             "r14", "r15", "rax", "rdi"};
 static const char *regs_32[] = {"r10d", "r11d", "ebx",  "r12d",
                                 "r13d", "r14d", "r15d", "eax"};
 static const char *regs_16[] = {"r10w", "r11w", "bx",   "r12w",
@@ -102,7 +102,7 @@ void gen_asm(ir_t *ir) {
       }
     }
   }
-  
+
   // Number of constant strings
   int nconsts = vec_len(ir->const_str);
   emit(".section __TEXT,__cstring");
