@@ -611,7 +611,7 @@ static node_t *stmt() {
     expect(eat(), "(");
     node->lhs = assign_expr();
     expect(eat(), ")");
-    node->rhs = stmt();
+    node->rhs = stmts();
     return node;
   } else if (type_equal(peek(0), TK_LBRACE)) {
     return stmts();

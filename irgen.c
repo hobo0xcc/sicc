@@ -383,29 +383,50 @@ static void gen_stmt(ir_t *ir, node_t *node) {
   }
   if (node->ty == ND_SWITCH) {
     int end = nbblabel_end++;
-    int r = gen_ir(ir, node->lhs);
-    emit(ir, IR_PUSH, r, -1, -1);
-    nreg--;
-    gen_stmt(ir, node->rhs);
+    int stmt_len = vec_len(node->rhs->stmts);
+    vec_t *case_list = new_vec();
+    ins_t *jmp_cond = emit(ir, IR_JMP_BB, 0, -1, -1);
+    int bb_start = nbblabel;
+    for (int i = 0; i < stmt_len; i++) {
+      node_t *stmt = vec_get(node->rhs->stmts, i);
+      gen_ir(ir, stmt);
+      if (stmt->ty == ND_CASE)
+        vec_push(case_list, stmt->lhs);
+    }
+    int case_len = vec_len(case_list);
+    emit(ir, IR_JMP_BBEND, end, -1, -1);
+    jmp_cond->lhs = nbblabel;
+    int i;
+    for (i = 0; i < case_len; i++) {
+      node_t *case_value = vec_get(case_list, i);
+      emit(ir, IR_LABEL_BB, nbblabel++, -1, -1);
+      int r = gen_ir(ir, node->lhs);
+      int r_value = gen_ir(ir, case_value);
+      emit(ir, IR_EQ, r, r_value, 8);
+      emit(ir, IR_JTRUE_BB, r, bb_start + i, -1);
+      emit(ir, IR_JMP_BB, nbblabel, -1, -1);
+      nreg -= 2;
+    }
+    // Jump to default label.
+    emit(ir, IR_LABEL_BB, nbblabel++, -1, -1);
+    emit(ir, IR_JMP_BB, bb_start + i, -1, -1);
+    // End of switch statement.
     emit(ir, IR_LABEL_BBEND, end, -1, -1);
     return;
   }
   if (node->ty == ND_CASE) {
     emit(ir, IR_LABEL_BB, nbblabel++, -1, -1);
-    int r = nreg++;
-    emit(ir, IR_POP, r, -1, -1);
-    int value = gen_ir(ir, node->lhs);
-    emit(ir, IR_PUSH, r, -1, -1);
-    emit(ir, IR_EQ, value, r, 8);
-    emit(ir, IR_JZERO_BB, value, nbblabel, -1);
-    nreg -= 2;
+    // int r = nreg++;
+    // emit(ir, IR_POP, r, -1, -1);
+    // int value = gen_ir(ir, node->lhs);
+    // emit(ir, IR_PUSH, r, -1, -1);
+    // emit(ir, IR_EQ, value, r, 8);
+    // emit(ir, IR_JZERO_BB, value, nbblabel, -1);
+    // nreg -= 2;
     return;
   }
   if (node->ty == ND_DEFAULT) {
     emit(ir, IR_LABEL_BB, nbblabel++, -1, -1);
-    int _r = nreg++;
-    emit(ir, IR_POP, _r, -1, -1);
-    nreg--;
     return;
   }
   if (node->ty == ND_BREAK) {
@@ -693,7 +714,13 @@ void print_ir(ir_t *ir) {
       printf("func %s:\n", ins->name);
       break;
     case IR_LABEL:
-      printf("  .L%d:\n", ins->lhs);
+      printf(".L%d:\n", ins->lhs);
+      break;
+    case IR_LABEL_BB:
+      printf(".LBB%d\n", ins->lhs);
+      break;
+    case IR_LABEL_BBEND:
+      printf(".LBB_END%d\n", ins->lhs);
       break;
     case IR_ALLOC:
       printf("  alloc %d\n", ins->lhs);
@@ -707,8 +734,29 @@ void print_ir(ir_t *ir) {
     case IR_JTRUE:
       printf("  jtrue r%d, .L%d\n", ins->lhs, ins->rhs);
       break;
+    case IR_JTRUE_BB:
+      printf("  jtrue r%d, .LBB%d\n", ins->lhs, ins->rhs);
+      break;
+    case IR_JTRUE_BBEND:
+      printf("  jtrue r%d, .LBB_END%d\n", ins->lhs, ins->rhs);
+      break;
+    case IR_JZERO:
+      printf("  jzero r%d, .L%d\n", ins->lhs, ins->rhs);
+      break;
+    case IR_JZERO_BB:
+      printf("  jzero r%d, .LBB%d\n", ins->lhs, ins->rhs);
+      break;
+    case IR_JZERO_BBEND:
+      printf("  jzero r%d, .LBB_END%d\n", ins->lhs, ins->rhs);
+      break;
     case IR_JMP:
       printf("  jmp .L%d\n", ins->lhs);
+      break;
+    case IR_JMP_BB:
+      printf("  jmp .LBB%d\n", ins->lhs);
+      break;
+    case IR_JMP_BBEND:
+      printf("  jmp .LBB_END%d\n", ins->lhs);
       break;
     case IR_STORE_VAR:
       printf("  store_var v%d, r%d\n", ins->lhs, ins->rhs);
@@ -739,6 +787,12 @@ void print_ir(ir_t *ir) {
       break;
     case IR_LOAD_ADDR_GVAR:
       printf("  load_addr_gvar r%d, %s\n", ins->lhs, ins->name);
+      break;
+    case IR_EQ:
+      printf("  eq r%d, r%d\n", ins->lhs, ins->rhs);
+      break;
+    case IR_NEQ:
+      printf("  neq r%d, r%d\n", ins->lhs, ins->rhs);
       break;
     default:
       error("Unknown operator: %d", ins->op);
