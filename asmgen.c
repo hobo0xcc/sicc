@@ -299,6 +299,11 @@ void gen_asm(ir_t *ir) {
       emit("  movzx %s, al", REG(lhs));
       emit("  mov al, 0");
       break;
+    case IR_CAST:
+      if (ins->size < rhs) {
+        emit("  movzx %s, %s", regs[lhs], REG(lhs));
+      }
+      break;
     default:
       error("Unknown IR type: %d", ins->op);
     }

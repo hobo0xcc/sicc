@@ -298,6 +298,11 @@ void sema_walk(node_t *node, int stat) {
     if (!(stat == STAT_FOR || stat == STAT_WHILE))
       error("'continue' statement can only be used in for or while.");
     break;
+  case ND_CAST:
+    if (node->type->ty == TY_STRUCT || node->type->ty == TY_VOID)
+      error("Cannot cast to struct and void.");
+    sema_walk(node->rhs, stat);
+    break;
   default:
     break;
   }

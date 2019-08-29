@@ -72,6 +72,7 @@ static node_t *params();
 static node_t *primary();
 static node_t *postfix();
 static node_t *unary();
+static node_t *cast_expr();
 static node_t *mul_expr();
 static node_t *add_expr();
 static node_t *relation_expr();
@@ -229,8 +230,22 @@ static node_t *unary() {
   return postfix();
 }
 
+static node_t *cast_expr() {
+  if (equal(peek(0), "(")) {
+    node_t *node = new_node(ND_CAST);
+    eat();
+    type_t *ty = type();
+    expect(eat(), ")");
+    node->type = ty;
+    node->rhs = cast_expr();
+    return node;
+  } else {
+    return unary();
+  }
+}
+
 static node_t *mul_expr() {
-  node_t *left = unary();
+  node_t *left = cast_expr();
   int op;
   for (;;) {
     if (equal(peek(0), "*"))
@@ -242,7 +257,7 @@ static node_t *mul_expr() {
 
     node_t *node = new_node(ND_EXPR);
     eat();
-    node_t *right = unary();
+    node_t *right = cast_expr();
     node->lhs = left;
     node->op = op;
     node->rhs = right;

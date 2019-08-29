@@ -60,6 +60,8 @@ static int free_stack(int size) {
   return cur_stack;
 }
 
+static void cast_reg(int r, type_t *from, type_t *to);
+
 static int gen_lval(ir_t *ir, node_t *node);
 static var_t *gen_initializer(ir_t *ir, node_t *node, type_t *array_ty,
                               int offset);
@@ -545,6 +547,11 @@ int gen_ir(ir_t *ir, node_t *node) {
     return -1;
   if (node->ty == ND_EXPR) {
     return gen_expr(ir, node);
+  }
+  if (node->ty == ND_CAST) {
+    int r = gen_ir(ir, node->rhs);
+    emit(ir, IR_CAST, r, node->rhs->type->size, node->type->size);
+    return r;
   }
   if (node->ty == ND_NUM) {
     emit(ir, IR_MOV_IMM, nreg++, node->num, node->type->size);

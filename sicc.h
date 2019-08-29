@@ -123,6 +123,7 @@ enum _node_enum {
   ND_DEFAULT,
   ND_BREAK,
   ND_CONTINUE,
+  ND_CAST,
   ND_NOP,
 };
 
@@ -178,6 +179,7 @@ enum _ir_enum {
   IR_SUB_IMM,
   IR_MOV,
   IR_LOGAND,
+  IR_CAST,
 };
 
 typedef struct _vec {
