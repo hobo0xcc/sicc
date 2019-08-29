@@ -5,7 +5,7 @@
 
 static int cur = 0;
 
-map_t *types; // type_info_t map
+map_t *types;     // type_info_t map
 map_t *enum_list; // intptr_t map
 
 static type_info_t *new_type_info(int size, int ty) {
@@ -40,10 +40,8 @@ static void expect(token_t *tk, char *str) {
 }
 
 static bool is_typename(token_t *tk) {
-  if (map_find(types, peek(0)->str)   ||
-      type_equal(peek(0), TK_STRUCT)  ||
-      type_equal(peek(0), TK_TYPEDEF) ||
-      type_equal(peek(0), TK_ENUM)) {
+  if (map_find(types, peek(0)->str) || type_equal(peek(0), TK_STRUCT) ||
+      type_equal(peek(0), TK_TYPEDEF) || type_equal(peek(0), TK_ENUM)) {
     return true;
   }
   return false;
@@ -382,7 +380,7 @@ static void storage_class(node_t *node) {
   if (equal(peek(0), "typedef")) {
     typedef_spec();
     return;
-  } 
+  }
 }
 
 static type_t *type() {
@@ -795,8 +793,7 @@ static node_t *function(type_t *ty) {
   node_t *node = new_node(ND_FUNC);
   if (!ty) {
     node->type = type();
-  }
-  else
+  } else
     node->type = ty;
   if (!type_equal(peek(0), TK_IDENT))
     error("function name expected, but got %s", peek(0)->str);

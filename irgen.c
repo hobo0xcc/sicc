@@ -261,7 +261,7 @@ static void gen_stmt(ir_t *ir, node_t *node) {
     int prog = nbblabel++;
     int start = nbblabel_start++;
     int end = nbblabel_end++;
-    
+
     emit(ir, IR_LABEL_BBSTART, start, -1, -1);
     emit(ir, IR_JMP_BB, eval, -1, -1);
     emit(ir, IR_LABEL_BB, prog, -1, -1);

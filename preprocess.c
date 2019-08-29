@@ -30,8 +30,7 @@ static map_t *parse_args(pp_env_t *e);
 static vec_t *parse_params(pp_env_t *e, char *name);
 static void replace_macro(pp_env_t *e, buf_t *b);
 static void parse_include(pp_env_t *e, buf_t *b);
-static void parse_if_section(pp_env_t *e, buf_t *b,
-    char *directive);
+static void parse_if_section(pp_env_t *e, buf_t *b, char *directive);
 static void pp_next(pp_env_t *e, buf_t *b);
 
 static char peek(pp_env_t *e, int offset) { return e->s[e->cur_p + offset]; }
@@ -193,8 +192,7 @@ static void parse_include(pp_env_t *e, buf_t *b) {
   }
 }
 
-static void parse_if_section(pp_env_t *e, buf_t *b,
-    char *directive) {
+static void parse_if_section(pp_env_t *e, buf_t *b, char *directive) {
   if (!strcmp(directive, "ifndef")) {
     SKIP_SPACE(e);
     char *name = get_string(e);
@@ -246,8 +244,7 @@ static void pp_next(pp_env_t *e, buf_t *b) {
       map_put(macros, m->name, m);
     } else if (!strcmp(ident, "include")) {
       parse_include(e, b);
-    } else if (!strcmp(ident, "ifndef") ||
-        !strcmp(ident, "else")) {
+    } else if (!strcmp(ident, "ifndef") || !strcmp(ident, "else")) {
       parse_if_section(e, b, ident);
     }
   } else if (isalpha(c)) {

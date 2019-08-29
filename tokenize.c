@@ -10,14 +10,14 @@ static struct keyword {
   char *str;
   int ty;
 } keywords[] = {
-    {"return", TK_RETURN}, {"if", TK_IF},
-    {"else", TK_ELSE},     {"int", TK_INT},
-    {"char", TK_CHAR},     {"while", TK_WHILE},
-    {"sizeof", TK_SIZEOF}, {"for", TK_FOR},
-    {"struct", TK_STRUCT}, {"typedef", TK_TYPEDEF},
-    {"goto", TK_GOTO},     {"switch", TK_SWITCH},
-    {"case", TK_CASE},     {"default", TK_DEFAULT},
-    {"break", TK_BREAK},   {"enum", TK_ENUM},
+    {"return", TK_RETURN},     {"if", TK_IF},
+    {"else", TK_ELSE},         {"int", TK_INT},
+    {"char", TK_CHAR},         {"while", TK_WHILE},
+    {"sizeof", TK_SIZEOF},     {"for", TK_FOR},
+    {"struct", TK_STRUCT},     {"typedef", TK_TYPEDEF},
+    {"goto", TK_GOTO},         {"switch", TK_SWITCH},
+    {"case", TK_CASE},         {"default", TK_DEFAULT},
+    {"break", TK_BREAK},       {"enum", TK_ENUM},
     {"continue", TK_CONTINUE}, {NULL, 0},
 };
 
