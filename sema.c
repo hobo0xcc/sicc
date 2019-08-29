@@ -292,7 +292,11 @@ void sema_walk(node_t *node, int stat) {
     break;
   case ND_BREAK:
     if (!(stat == STAT_FOR || stat == STAT_WHILE || stat == STAT_SWITCH))
-      error("'break' label can only be used in for, while or switch.");
+      error("'break' statement can only be used in for, while or switch.");
+    break;
+  case ND_CONTINUE:
+    if (!(stat == STAT_FOR || stat == STAT_WHILE))
+      error("'continue' statement can only be used in for or while.");
     break;
   default:
     break;

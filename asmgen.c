@@ -189,6 +189,9 @@ void gen_asm(ir_t *ir) {
     case IR_LABEL_BBEND:
       emit(".LBB_END%d: ", lhs);
       break;
+    case IR_LABEL_BBSTART:
+      emit(".LBB_START%d: ", lhs);
+      break;
     case IR_ALLOC:
       emit("  sub rsp, %d", lhs);
       break;
@@ -232,6 +235,9 @@ void gen_asm(ir_t *ir) {
       break;
     case IR_JMP_BBEND:
       emit("  jmp .LBB_END%d", lhs);
+      break;
+    case IR_JMP_BBSTART:
+      emit("  jmp .LBB_START%d", lhs);
       break;
     case IR_STORE_VAR:
       emit("  mov %s [rbp%+d], %s", ptr_size(ins), -lhs, REG(rhs));

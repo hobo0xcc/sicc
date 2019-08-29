@@ -673,15 +673,21 @@ static node_t *stmt() {
     // for (init; cond; loop) body
     if (map_find(types, tk->str)) {
       init = decl_list();
+    } else if (tk->ty == TK_SEMICOLON) {
+      init = new_node(ND_NOP);
     } else {
       init = assign_expr();
     }
     expect(eat(), ";");
     if (!equal(peek(0), ";"))
       cond = assign_expr();
+    else
+      cond = new_node(ND_NOP);
     expect(eat(), ";");
     if (!equal(peek(0), ";"))
       loop = assign_expr();
+    else
+      loop = new_node(ND_NOP);
     expect(eat(), ")");
     body = stmt();
 
@@ -729,6 +735,11 @@ static node_t *stmt() {
     return node;
   } else if (type_equal(peek(0), TK_BREAK)) {
     node_t *node = new_node(ND_BREAK);
+    eat();
+    expect(eat(), ";");
+    return node;
+  } else if (type_equal(peek(0), TK_CONTINUE)) {
+    node_t *node = new_node(ND_CONTINUE);
     eat();
     expect(eat(), ";");
     return node;

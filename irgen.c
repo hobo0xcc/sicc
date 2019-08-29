@@ -5,6 +5,7 @@
 static int nreg = 0;
 static int nlabel = 1;
 static int nbblabel = 1;
+static int nbblabel_start = 1;
 static int nbblabel_end = 1;
 static int stack_size = 0;
 static int cur_stack = 0;
@@ -17,6 +18,7 @@ ir_t *new_ir() {
   ir->gfuncs = new_vec();
   ir->const_str = new_vec();
   ir->labels = new_map();
+  ir->env = calloc(1, sizeof(ir_env_t));
   return ir;
 }
 
@@ -257,8 +259,10 @@ static void gen_stmt(ir_t *ir, node_t *node) {
   if (node->ty == ND_WHILE) {
     int eval = nbblabel++;
     int prog = nbblabel++;
+    int start = nbblabel_start++;
     int end = nbblabel_end++;
-
+    
+    emit(ir, IR_LABEL_BBSTART, start, -1, -1);
     emit(ir, IR_JMP_BB, eval, -1, -1);
     emit(ir, IR_LABEL_BB, prog, -1, -1);
     gen_ir(ir, node->lhs);
@@ -271,18 +275,22 @@ static void gen_stmt(ir_t *ir, node_t *node) {
   }
   if (node->ty == ND_FOR) {
     int cond = nbblabel++;
+    int start = nbblabel_start++;
     int end = nbblabel_end++;
 
     gen_ir(ir, node->init);
+    emit(ir, IR_LABEL_BBSTART, start, -1, -1);
     emit(ir, IR_LABEL_BB, cond, -1, -1);
     int r = gen_ir(ir, node->cond);
     if (r != -1) {
       emit(ir, IR_JZERO_BBEND, r, end, -1);
       nreg--;
     }
+    ir->env->before_continue = node->loop;
     gen_ir(ir, node->body);
-    if (gen_ir(ir, node->loop) != -1)
+    if (gen_ir(ir, node->loop) != -1) {
       nreg--;
+    }
     emit(ir, IR_JMP_BB, cond, -1, -1);
     emit(ir, IR_LABEL_BBEND, end, -1, -1);
 
@@ -433,6 +441,15 @@ static void gen_stmt(ir_t *ir, node_t *node) {
   }
   if (node->ty == ND_BREAK) {
     emit(ir, IR_JMP_BBEND, nbblabel_end - 1, -1, -1);
+    return;
+  }
+  if (node->ty == ND_CONTINUE) {
+    if (ir->env->before_continue) {
+      gen_ir(ir, ir->env->before_continue);
+      nreg--;
+      ir->env->before_continue = NULL;
+    }
+    emit(ir, IR_JMP_BBSTART, nbblabel_start - 1, -1, -1);
     return;
   }
 
@@ -724,6 +741,9 @@ void print_ir(ir_t *ir) {
     case IR_LABEL_BBEND:
       printf(".LBB_END%d\n", ins->lhs);
       break;
+    case IR_LABEL_BBSTART:
+      printf(".LBB_START%d\n", ins->lhs);
+      break;
     case IR_ALLOC:
       printf("  alloc %d\n", ins->lhs);
       break;
@@ -759,6 +779,9 @@ void print_ir(ir_t *ir) {
       break;
     case IR_JMP_BBEND:
       printf("  jmp .LBB_END%d\n", ins->lhs);
+      break;
+    case IR_JMP_BBSTART:
+      printf("  jmp .LBB_START%d\n", ins->lhs);
       break;
     case IR_STORE_VAR:
       printf("  store_var v%d, r%d\n", ins->lhs, ins->rhs);

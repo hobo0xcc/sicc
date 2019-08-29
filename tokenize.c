@@ -18,7 +18,7 @@ static struct keyword {
     {"goto", TK_GOTO},     {"switch", TK_SWITCH},
     {"case", TK_CASE},     {"default", TK_DEFAULT},
     {"break", TK_BREAK},   {"enum", TK_ENUM},
-    {NULL, 0},
+    {"continue", TK_CONTINUE}, {NULL, 0},
 };
 
 static int check_ident_type(char *str) {

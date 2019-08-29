@@ -50,6 +50,7 @@ enum _token_enum {
   TK_DEFAULT,
   TK_BREAK,
   TK_ENUM,
+  TK_CONTINUE,
 
   TK_SIZEOF,
 
@@ -121,6 +122,7 @@ enum _node_enum {
   ND_CASE,
   ND_DEFAULT,
   ND_BREAK,
+  ND_CONTINUE,
   ND_NOP,
 };
 
@@ -142,6 +144,7 @@ enum _ir_enum {
   IR_LABEL,      // Label
   IR_LABEL_BB,
   IR_LABEL_BBEND,
+  IR_LABEL_BBSTART,
   IR_ALLOC,    // Alloc vars
   IR_FREE,     // Free vars
   IR_RET,      // Return register
@@ -151,6 +154,7 @@ enum _ir_enum {
   IR_JMP, // Jmp
   IR_JMP_BB,
   IR_JMP_BBEND,
+  IR_JMP_BBSTART,
   IR_JTRUE, // Jmp if true(1)
   IR_JTRUE_BB,
   IR_JTRUE_BBEND,
@@ -278,6 +282,10 @@ typedef struct _gvar {
   bool external;
 } gvar_t;
 
+typedef struct _ir_env {
+  node_t *before_continue;
+} ir_env_t;
+
 typedef struct _ir {
   vec_t *code; // ins_t list
   map_t *gvars;
@@ -287,6 +295,7 @@ typedef struct _ir {
   map_t *labels;
   int len;        // code length
   int stack_size; // max stack size in function
+  ir_env_t *env;
 } ir_t;
 
 extern vec_t *tokens;
