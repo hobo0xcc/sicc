@@ -93,6 +93,11 @@ map_t *new_map() {
 }
 
 void map_put(map_t *m, char *key, void *item) {
+  int i;
+  if ((i = map_index(m, key)) != -1) {
+    vec_set(m->items, i, item);
+    return;
+  }
   vec_push(m->keys, key);
   vec_push(m->items, item);
   m->len++;

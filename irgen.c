@@ -162,7 +162,8 @@ static void gen_stmt(ir_t *ir, node_t *node) {
   }
   if (node->ty == ND_FUNC) {
     ins_t *func = emit(ir, IR_FUNC, -1, -1, -1);
-    vec_push(ir->gfuncs, node->str);
+    if (!node->flag->is_node_static)
+      vec_push(ir->gfuncs, node->str);
     func->name = node->str;
     ins_t *stack_alloc = emit(ir, IR_ALLOC, 0, -1, -1);
 #ifdef __APPLE__
@@ -364,6 +365,8 @@ static void gen_stmt(ir_t *ir, node_t *node) {
     gvar_t *gvar = new_gvar(node->str, node->type->size);
     gvar->is_null = 1;
     gvar->init = NULL;
+    if (node->flag->is_node_extern)
+      gvar->external = true;
     map_put(ir->gvars, node->str, gvar);
     return;
   }

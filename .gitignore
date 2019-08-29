@@ -1,3 +1,4 @@
 sicc
 *.o
 test/a.out
+test/*.s

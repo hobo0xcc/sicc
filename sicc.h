@@ -49,6 +49,7 @@ enum _token_enum {
   TK_CASE,
   TK_DEFAULT,
   TK_BREAK,
+  TK_ENUM,
 
   TK_SIZEOF,
 
@@ -191,6 +192,11 @@ typedef struct _buf {
   char *data;
 } buf_t;
 
+typedef struct _pp_env {
+  char *s;
+  int cur_p;
+} pp_env_t;
+
 typedef struct _token {
   int ty;
   char *str;
@@ -221,6 +227,8 @@ typedef struct _type {
 
 typedef struct _flag {
   bool should_save;
+  bool is_node_static;
+  bool is_node_extern;
 } flag_t;
 
 typedef struct _node {
@@ -267,6 +275,7 @@ typedef struct _gvar {
   int size;
   int is_null;
   node_t *init;
+  bool external;
 } gvar_t;
 
 typedef struct _ir {
@@ -322,7 +331,7 @@ void debug(char *s);
 /* preprocess.c */
 extern map_t *macros;
 
-char *preprocess(char *s);
+char *preprocess(char *s, pp_env_t *e);
 
 /* tokenize.c */
 void tokenize(char *s);

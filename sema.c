@@ -43,7 +43,8 @@ static type_t *get_var_types(char *str) {
 void sema_walk(node_t *node, int stat) {
   if (!node)
     return;
-  node->flag = calloc(1, sizeof(flag_t));
+  if (!node->flag)
+    node->flag = calloc(1, sizeof(flag_t));
   switch (node->ty) {
   case ND_EXTERNAL:
     for (int i = 0; i < vec_len(node->decl_list); i++) {
@@ -54,6 +55,8 @@ void sema_walk(node_t *node, int stat) {
     }
     break;
   case ND_FUNC:
+    if (stat != STAT_EXTERNAL)
+      error("Cannot declare function in here");
     map_put(gfuncs, node->str, node->type);
     sema_walk(node->rhs, STAT_FUNC);
     sema_walk(node->lhs, STAT_FUNC);

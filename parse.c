@@ -6,6 +6,7 @@
 static int cur = 0;
 
 map_t *types; // type_info_t map
+map_t *enum_list; // intptr_t map
 
 static type_info_t *new_type_info(int size, int ty) {
   type_info_t *tyinfo = calloc(1, sizeof(type_info_t));
@@ -38,6 +39,16 @@ static void expect(token_t *tk, char *str) {
   error("%s expected, but got %s: line %d", str, tk->str, tk->line);
 }
 
+static bool is_typename(token_t *tk) {
+  if (map_find(types, peek(0)->str)   ||
+      type_equal(peek(0), TK_STRUCT)  ||
+      type_equal(peek(0), TK_TYPEDEF) ||
+      type_equal(peek(0), TK_ENUM)) {
+    return true;
+  }
+  return false;
+}
+
 node_t *new_node(int ty) {
   node_t *node = calloc(1, sizeof(node_t));
   node->ty = ty;
@@ -53,6 +64,7 @@ type_t *new_type(int size, int ty) {
 
 void init_parser() {
   types = new_map();
+  enum_list = new_map();
   map_put(types, "int", new_type_info(4, TY_INT));
   map_put(types, "char", new_type_info(1, TY_CHAR));
   map_put(types, "void", new_type_info(0, TY_VOID));
@@ -70,17 +82,20 @@ static node_t *logic_and_expr();
 static node_t *assign_expr();
 static node_t *const_expr();
 
+static void storage_class(node_t *node);
 static type_t *type();
 static node_t *init();
-static node_t *decl();
+static node_t *decl(type_t *ty);
 static member_t *struct_declarator();
 static type_t *struct_spec();
 static type_t *typedef_spec();
-static node_t *ext_decl();
+static void enum_declarator();
+static type_t *enum_spec();
+static node_t *ext_decl(type_t *ty);
 static node_t *stmt();
-static node_t *stmts();
+static node_t *compound_stmt();
 static node_t *arguments();
-static node_t *function();
+static node_t *function(type_t *ty);
 
 static node_t *params() {
   node_t *node = new_node(ND_PARAMS);
@@ -107,6 +122,11 @@ static node_t *primary() {
     node->num = atoi(eat()->str);
     return node;
   } else if (type_equal(peek(0), TK_IDENT)) {
+    if (map_find(enum_list, peek(0)->str)) {
+      node_t *node = new_node(ND_NUM);
+      node->num = (int)(intptr_t)map_get(enum_list, eat()->str);
+      return node;
+    }
     node_t *node = new_node(ND_IDENT);
     node->str = eat()->str;
     return node;
@@ -345,12 +365,32 @@ static node_t *assign_expr() {
 
 static node_t *const_expr() { return logic_and_expr(); }
 
+static void storage_class(node_t *node) {
+  if (!node->flag)
+    node->flag = calloc(1, sizeof(flag_t));
+
+  if (equal(peek(0), "static")) {
+    eat();
+    node->flag->is_node_static = true;
+    return;
+  }
+  if (equal(peek(0), "extern")) {
+    eat();
+    node->flag->is_node_extern = true;
+    return;
+  }
+  if (equal(peek(0), "typedef")) {
+    typedef_spec();
+    return;
+  } 
+}
+
 static type_t *type() {
   type_t *type;
   if (equal(peek(0), "struct")) {
     type = struct_spec();
-  } else if (equal(peek(0), "typedef")) {
-    return typedef_spec();
+  } else if (equal(peek(0), "enum")) {
+    return enum_spec();
   } else {
     char *type_name = peek(0)->str;
     type_info_t *info = (type_info_t *)map_get(types, type_name);
@@ -417,11 +457,25 @@ static void decl_init(node_t *node) {
   }
 }
 
-static node_t *decl() {
+static node_t *decl(type_t *ty) {
   node_t *node = new_node(ND_VAR_DEF);
-  node->type = type();
-  if (peek(0)->ty == TK_SEMICOLON)
+
+  if (!ty) {
+    storage_class(node);
+    if (peek(0)->ty == TK_SEMICOLON) {
+      return new_node(ND_NOP);
+    }
+    node->type = type();
+  } else
+    node->type = ty;
+  if (peek(0)->ty == TK_SEMICOLON) {
     return new_node(ND_NOP);
+  }
+  if (peek(1)->ty == TK_LPAREN) {
+    node_t *func = function(node->type);
+    func->flag = node->flag;
+    return func;
+  }
   decl_init(node);
   if (!equal(peek(0), "=")) {
     node->ty = ND_VAR_DECL;
@@ -433,7 +487,7 @@ static node_t *decl() {
 }
 
 static node_t *decl_list() {
-  node_t *first = decl();
+  node_t *first = decl(NULL);
   if (!equal(peek(0), ",")) {
     return first;
   }
@@ -464,7 +518,7 @@ static member_t *struct_declarator() {
   m->data = new_map();
   m->offset = new_map();
   while (!equal(peek(0), "}")) {
-    node_t *node = decl();
+    node_t *node = decl(NULL);
     if (node->ty != ND_VAR_DECL && node->ty != ND_VAR_DECL_LIST) {
       error("Variable declaration expected: line %d", peek(0)->line);
     }
@@ -522,7 +576,7 @@ static type_t *struct_spec() {
 
 static type_t *typedef_spec() {
   expect(eat(), "typedef");
-  node_t *node = decl();
+  node_t *node = decl(NULL);
   if (node->str == NULL)
     return node->type;
   type_info_t *info = new_type_info(node->type->size, node->type->ty);
@@ -531,13 +585,50 @@ static type_t *typedef_spec() {
   return node->type;
 }
 
-static node_t *ext_decl() {
-  node_t *node = decl();
+static void enum_declarator() {
+  expect(eat(), "{");
+  int iota = 0;
+  while (!equal(peek(0), "}")) {
+    token_t *tk = eat();
+    if (tk->ty != TK_IDENT)
+      error("Identifier expected but got %s: line %d", tk->str, tk->line);
+    if (equal(peek(0), "=")) {
+      eat();
+      token_t *num = eat();
+      if (num->ty != TK_NUM)
+        error("Number expected but got %s: line %d", num->str, num->line);
+      iota = atoi(num->str);
+    }
+
+    map_put(enum_list, tk->str, (void *)(intptr_t)iota++);
+    if (!equal(peek(0), ","))
+      break;
+    eat();
+  }
+
+  expect(eat(), "}");
+}
+
+static type_t *enum_spec() {
+  expect(eat(), "enum");
+  type_info_t *info = map_get(types, "int");
+  type_t *type = new_type(info->size, info->ty);
+  if (type_equal(peek(0), TK_IDENT)) {
+    map_put(types, eat()->str, info);
+  }
+  if (equal(peek(0), "{")) {
+    enum_declarator();
+  }
+
+  return type;
+}
+
+static node_t *ext_decl(type_t *ty) {
+  node_t *node = decl(ty);
   if (node->ty == ND_VAR_DECL)
     node->ty = ND_EXT_VAR_DECL;
   else if (node->ty == ND_VAR_DEF)
     node->ty = ND_EXT_VAR_DEF;
-  expect(eat(), ";");
   return node;
 }
 
@@ -606,10 +697,10 @@ static node_t *stmt() {
     expect(eat(), "(");
     node->lhs = assign_expr();
     expect(eat(), ")");
-    node->rhs = stmts();
+    node->rhs = stmt();
     return node;
   } else if (type_equal(peek(0), TK_LBRACE)) {
-    return stmts();
+    return compound_stmt();
   } else if (type_equal(peek(0), TK_IDENT) && peek(1)->ty == TK_COLON) {
     node_t *node = new_node(ND_LABEL);
     node->str = eat()->str;
@@ -641,11 +732,8 @@ static node_t *stmt() {
     eat();
     expect(eat(), ";");
     return node;
-  } else if (map_find(types, peek(0)->str) || type_equal(peek(0), TK_STRUCT) ||
-             type_equal(peek(0), TK_TYPEDEF)) {
-    node_t *node = decl_list();
-    expect(eat(), ";");
-    return node;
+  } else if (peek(0)->ty == TK_SEMICOLON) {
+    return new_node(ND_NOP);
   } else {
     node_t *node = assign_expr();
     expect(eat(), ";");
@@ -653,12 +741,19 @@ static node_t *stmt() {
   }
 }
 
-static node_t *stmts() {
+static node_t *compound_stmt() {
   node_t *node = new_node(ND_STMTS);
   node->stmts = new_vec();
   expect(eat(), "{");
-  while (!equal(peek(0), "}"))
-    vec_push(node->stmts, stmt());
+  while (!equal(peek(0), "}")) {
+    if (is_typename(peek(0))) {
+      node_t *decls = decl_list();
+      expect(eat(), ";");
+      vec_push(node->stmts, decls);
+    } else {
+      vec_push(node->stmts, stmt());
+    }
+  }
   expect(eat(), "}");
   return node;
 }
@@ -685,14 +780,22 @@ static node_t *arguments() {
   return node;
 }
 
-static node_t *function() {
+static node_t *function(type_t *ty) {
   node_t *node = new_node(ND_FUNC);
-  node->type = type();
+  if (!ty) {
+    node->type = type();
+  }
+  else
+    node->type = ty;
   if (!type_equal(peek(0), TK_IDENT))
     error("function name expected, but got %s", peek(0)->str);
   node->str = eat()->str;
   node_t *args = arguments();
-  node_t *prog = stmt();
+  if (equal(peek(0), ";")) {
+    eat();
+    return new_node(ND_NOP);
+  }
+  node_t *prog = compound_stmt();
   node->lhs = prog;
   node->rhs = args;
   return node;
@@ -705,13 +808,13 @@ node_t *parse() {
   node->decl_list = new_vec();
 
   while (!type_equal(peek(0), TK_EOF)) {
-    int i;
-    for (i = 0; !type_equal(peek(i), TK_IDENT); i++)
-      ;
-    if (equal(peek(i + 1), "("))
-      vec_push(node->funcs, function());
-    else
-      vec_push(node->decl_list, ext_decl());
+    node_t *d = ext_decl(NULL);
+    if (d->ty == ND_FUNC)
+      vec_push(node->funcs, d);
+    else {
+      vec_push(node->decl_list, d);
+      expect(eat(), ";");
+    }
   }
 
   return node;

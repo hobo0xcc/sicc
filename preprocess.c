@@ -10,11 +10,6 @@
 
 map_t *macros;
 
-typedef struct _env {
-  char *s;
-  int cur_p;
-} env_t;
-
 typedef struct _macro {
   char *name;
   buf_t *macro_buf;
@@ -22,23 +17,31 @@ typedef struct _macro {
   int args_len;
 } macro_t;
 
-static char peek(env_t *e, int offset);
-static char eat(env_t *e);
-static env_t *new_env(char *s);
+static char peek(pp_env_t *e, int offset);
+static char eat(pp_env_t *e);
+static bool is_eof(pp_env_t *e);
+static pp_env_t *new_env(char *s);
 static macro_t *new_macro(char *name);
-static char *get_string(env_t *e);
-static macro_t *parse_macro(env_t *e);
-static map_t *parse_args(env_t *e);
-static vec_t *parse_params(env_t *e, char *name);
-static void replace_macro(env_t *e, buf_t *b);
-static void parse_include(env_t *e, buf_t *b);
+static char *get_string(pp_env_t *e);
+static char *peek_string(pp_env_t *e, int offset);
+static bool cmp_string(pp_env_t *e, char *str, int offset);
+static macro_t *parse_macro(pp_env_t *e);
+static map_t *parse_args(pp_env_t *e);
+static vec_t *parse_params(pp_env_t *e, char *name);
+static void replace_macro(pp_env_t *e, buf_t *b);
+static void parse_include(pp_env_t *e, buf_t *b);
+static void parse_if_section(pp_env_t *e, buf_t *b,
+    char *directive);
+static void pp_next(pp_env_t *e, buf_t *b);
 
-static char peek(env_t *e, int offset) { return e->s[e->cur_p + offset]; }
+static char peek(pp_env_t *e, int offset) { return e->s[e->cur_p + offset]; }
 
-static char eat(env_t *e) { return e->s[e->cur_p++]; }
+static char eat(pp_env_t *e) { return e->s[e->cur_p++]; }
 
-static env_t *new_env(char *s) {
-  env_t *e = calloc(1, sizeof(env_t));
+static bool is_eof(pp_env_t *e) { return peek(e, 0) == 0; }
+
+static pp_env_t *new_env(char *s) {
+  pp_env_t *e = calloc(1, sizeof(pp_env_t));
   e->s = s;
   e->cur_p = 0;
   return e;
@@ -50,18 +53,40 @@ static macro_t *new_macro(char *name) {
   return macro;
 }
 
-static char *get_string(env_t *e) {
+static char *get_string(pp_env_t *e) {
   buf_t *b = new_buf();
   if (!isalpha(peek(e, 0)))
     error("Not a string: %c", peek(e, 0));
 
-  while (isalnum(peek(e, 0))) {
+  while (isalnum(peek(e, 0)) || peek(e, 0) == '_') {
     buf_push(b, eat(e));
   }
   return buf_str(b);
 }
 
-static macro_t *parse_macro(env_t *e) {
+static char *peek_string(pp_env_t *e, int offset) {
+  buf_t *b = new_buf();
+  int i = offset;
+  if (!isalpha(peek(e, i)))
+    return NULL;
+  while (peek(e, i) == ' ')
+    i++;
+  for (; isalnum(peek(e, i)) || peek(e, i) == '_'; i++) {
+    buf_push(b, peek(e, i));
+  }
+  return buf_str(b);
+}
+
+static bool cmp_string(pp_env_t *e, char *str, int offset) {
+  char *comp = peek_string(e, offset);
+  if (!comp)
+    return false;
+  if (!strcmp(comp, str))
+    return true;
+  return false;
+}
+
+static macro_t *parse_macro(pp_env_t *e) {
   char *name = get_string(e);
   macro_t *m = new_macro(name);
   SKIP_SPACE(e);
@@ -91,7 +116,7 @@ static macro_t *parse_macro(env_t *e) {
   return m;
 }
 
-static map_t *parse_args(env_t *e) {
+static map_t *parse_args(pp_env_t *e) {
   map_t *args = new_map();
   if (peek(e, 0) != '(')
     return args;
@@ -106,7 +131,7 @@ static map_t *parse_args(env_t *e) {
   return args;
 }
 
-static vec_t *parse_params(env_t *e, char *name) {
+static vec_t *parse_params(pp_env_t *e, char *name) {
   vec_t *params = new_vec();
   SKIP_SPACE(e);
   if (eat(e) != '(')
@@ -126,7 +151,7 @@ static vec_t *parse_params(env_t *e, char *name) {
   return params;
 }
 
-static void replace_macro(env_t *e, buf_t *b) {
+static void replace_macro(pp_env_t *e, buf_t *b) {
   char *str = get_string(e);
   if (map_find(macros, str)) {
     macro_t *m = map_get(macros, str);
@@ -148,7 +173,7 @@ static void replace_macro(env_t *e, buf_t *b) {
   }
 }
 
-static void parse_include(env_t *e, buf_t *b) {
+static void parse_include(pp_env_t *e, buf_t *b) {
   SKIP_SPACE(e);
   char c;
   if ((c = peek(e, 0)) == '\"') {
@@ -168,27 +193,77 @@ static void parse_include(env_t *e, buf_t *b) {
   }
 }
 
-char *preprocess(char *s) {
-  env_t *e = new_env(s);
+static void parse_if_section(pp_env_t *e, buf_t *b,
+    char *directive) {
+  if (!strcmp(directive, "ifndef")) {
+    SKIP_SPACE(e);
+    char *name = get_string(e);
+    if (!map_find(macros, name)) {
+      while (!is_eof(e)) {
+        if (peek(e, 0) == '#' && cmp_string(e, "endif", 1)) {
+          eat(e);
+          get_string(e);
+          return;
+        }
+        pp_next(e, b);
+      }
+      return;
+    } else {
+      buf_t *tmp = new_buf();
+      while (!is_eof(e)) {
+        if (peek(e, 0) == '#' && cmp_string(e, "endif", 1)) {
+          eat(e);
+          get_string(e);
+          return;
+        } else if (peek(e, 0) == '#' && cmp_string(e, "else", 1)) {
+          pp_next(e, b);
+          return;
+        }
+        pp_next(e, tmp);
+      }
+      return;
+    }
+  } else if (!strcmp(directive, "else")) {
+    while (!is_eof(e)) {
+      if (peek(e, 0) == '#' && cmp_string(e, "endif", 1)) {
+        eat(e);
+        get_string(e);
+        return;
+      }
+      pp_next(e, b);
+    }
+  }
+}
+
+static void pp_next(pp_env_t *e, buf_t *b) {
+  char c = peek(e, 0);
+  if (c == '#') {
+    eat(e);
+    char *ident = get_string(e);
+    SKIP_SPACE(e);
+    if (!strcmp(ident, "define")) {
+      macro_t *m = parse_macro(e);
+      map_put(macros, m->name, m);
+    } else if (!strcmp(ident, "include")) {
+      parse_include(e, b);
+    } else if (!strcmp(ident, "ifndef") ||
+        !strcmp(ident, "else")) {
+      parse_if_section(e, b, ident);
+    }
+  } else if (isalpha(c)) {
+    replace_macro(e, b);
+  } else {
+    buf_push(b, eat(e));
+  }
+}
+
+char *preprocess(char *s, pp_env_t *e) {
+  if (!e)
+    e = new_env(s);
   macros = new_map();
   buf_t *b = new_buf();
-  char c;
-  while ((c = peek(e, 0))) {
-    if (c == '#') {
-      eat(e);
-      char *ident = get_string(e);
-      SKIP_SPACE(e);
-      if (!strcmp(ident, "define")) {
-        macro_t *m = parse_macro(e);
-        map_put(macros, m->name, m);
-      } else if (!strcmp(ident, "include")) {
-        parse_include(e, b);
-      }
-    } else if (isalpha(c)) {
-      replace_macro(e, b);
-    } else {
-      buf_push(b, eat(e));
-    }
+  while (!is_eof(e)) {
+    pp_next(e, b);
   }
 
   return buf_str(b);

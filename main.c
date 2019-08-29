@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
   }
 
   char *s = read_file(arg);
-  char *p = preprocess(s);
+  char *p = preprocess(s, NULL);
   tokenize(p);
   node_t *node = parse();
   sema(node);

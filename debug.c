@@ -31,7 +31,7 @@ void debug_node(node_t *node) {
 
 void debug_ir(char *filename) {
   char *str = read_file(filename);
-  char *src = preprocess(str);
+  char *src = preprocess(str, NULL);
   tokenize(src);
   init_parser();
   node_t *node = parse();
@@ -43,7 +43,8 @@ void debug_ir(char *filename) {
 
 void debug(char *s) {
   char *str = read_file(s);
-  char *p = preprocess(str);
+  char *p = preprocess(str, NULL);
+  printf("%s\n", p);
   tokenize(p);
   debug_tokens(tokens);
   printf("%s\n", p);
