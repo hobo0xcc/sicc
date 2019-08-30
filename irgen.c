@@ -63,8 +63,7 @@ static int free_stack(int size) {
 static void cast_reg(int r, type_t *from, type_t *to);
 
 static int gen_lval(ir_t *ir, node_t *node);
-static var_t *gen_initializer(ir_t *ir, node_t *node, type_t *array_ty,
-                              int offset);
+static void gen_initializer(ir_t *ir, node_t *node, int offset);
 static void gen_stmt(ir_t *ir, node_t *node);
 static int gen_expr(ir_t *ir, node_t *node);
 static int gen_assign(ir_t *ir, node_t *node, int left, int right);
@@ -122,20 +121,15 @@ static int gen_lval(ir_t *ir, node_t *node) {
   }
 }
 
-static var_t *gen_initializer(ir_t *ir, node_t *node, type_t *array_ty,
-                              int offset) {
-  int elem_size = array_ty->size_deref;
-  int elem_offset = offset;
-  int elem_len = array_ty->array_size;
-  for (int i = 0; i < elem_len; i++, elem_offset -= elem_size) {
-    node_t *expr = vec_get(node->initializer, i);
-    int r = gen_ir(ir, expr);
-    emit(ir, IR_STORE_VAR, elem_offset, r, elem_size);
-    nreg--;
+static void gen_initializer(ir_t *ir, node_t *node, int offset) {
+  int len = vec_len(node->initializer);
+  for (int i = 0; i < len; i++) {
+    node_t *e = vec_get(node->initializer, i);
+    int r = gen_ir(ir, e);
+    if (!(e->ty == ND_INITIALIZER))
+      emit(ir, IR_STORE_VAR, offset, r, e->type->size);
+    offset += e->type->size;
   }
-
-  var_t *var = new_var(offset, array_ty->size_deref);
-  return var;
 }
 
 static void gen_stmt(ir_t *ir, node_t *node) {
@@ -315,12 +309,13 @@ static void gen_stmt(ir_t *ir, node_t *node) {
     int offset = alloc_stack(node->type->size);
     int r;
     if (node->lhs->ty == ND_INITIALIZER) {
-      if (node->type->ty != TY_ARRAY) {
-        error("Initializer is only to use to an array");
-      } else {
-        var_t *var = gen_initializer(ir, node->lhs, node->type, offset);
-        map_put(ir->vars, node->str, var);
-      }
+      // if (node->type->ty != TY_ARRAY) {
+      //   error("Initializer is only to use to an array");
+      // } else {
+      gen_initializer(ir, node->lhs, offset);
+      var_t *var = new_var(offset, node->type->size);
+      map_put(ir->vars, node->str, var);
+      // }
       return;
     } else {
       r = gen_ir(ir, node->lhs);
@@ -353,14 +348,6 @@ static void gen_stmt(ir_t *ir, node_t *node) {
   if (node->ty == ND_EXT_VAR_DEF) {
     if (map_find(ir->gvars, node->str))
       error("%s is already defined", node->str);
-    if (node->lhs->ty == ND_INITIALIZER) {
-      if (node->type->ty != TY_ARRAY) {
-        error("Initializer is only to use to an array");
-      } else {
-        error("Global array initializer is not implemented yet");
-      }
-      return;
-    }
 
     gvar_t *gvar = new_gvar(node->str, node->type->size);
     gvar->init = node->lhs;

@@ -73,6 +73,44 @@ static const char *get_arg_reg(int n, int size) {
   return NULL;
 }
 
+static void init_global_var(ir_t *ir, node_t *init) {
+  if (init->ty == ND_NUM) {
+    emit("  .long %d", init->num);
+    return;
+  }
+  if (init->ty == ND_CHARACTER) {
+    emit("  .byte %d", *(init->str));
+    return;
+  }
+  if (init->ty == ND_STRING) {
+    vec_push(ir->const_str, init->str);
+    int i = vec_len(ir->const_str) - 1;
+    emit("  .quad .LC%d", i);
+    return;
+  }
+  if (init->ty == ND_INITIALIZER) {
+    int len = vec_len(init->initializer);
+    for (int i = 0; i < len; i++) {
+      init_global_var(ir, vec_get(init->initializer, i));
+    }
+    return;
+  }
+  if (init->ty == ND_IDENT) {
+    gvar_t *gvar = map_get(ir->gvars, init->str);
+    if (!gvar) {
+      error("%s is not defined as global variable", init->str);
+    }
+    
+    if (!gvar->is_null) {
+      error("Cannot initialize global var with %s", init->str);
+    }
+    init_global_var(ir, gvar->init);
+    return;
+  }
+  
+  error("Cannot initialize global var with %s", init->ty);
+}
+
 void gen_asm(ir_t *ir) {
   int len = vec_len(ir->code);
   // Number of global functions
@@ -95,13 +133,8 @@ void gen_asm(ir_t *ir) {
       // http://web.mit.edu/gnu/doc/html/as_7.html#SEC74
       emit("  .comm _%s, %d", gvar->name, gvar->size);
     } else {
-      if (gvar->init->ty == ND_NUM) {
-        // http://web.mit.edu/gnu/doc/html/as_7.html#SEC102
-        emit("  _%s: \n  .long %d", gvar->name, gvar->init->num);
-      } else {
-        error("Global variable initializer that other than number is "
-              "not implemented yet");
-      }
+      emit("_%s: ", gvar->name);
+      init_global_var(ir, gvar->init);
     }
   }
 

@@ -428,7 +428,7 @@ static node_t *init() {
     node_t *node = new_node(ND_INITIALIZER);
     node->initializer = new_vec();
     while (!equal(peek(0), "}")) {
-      node_t *nexpr = assign_expr();
+      node_t *nexpr = init();
       vec_push(node->initializer, nexpr);
       if (!equal(peek(0), ","))
         break;
