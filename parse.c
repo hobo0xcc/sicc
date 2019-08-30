@@ -65,7 +65,7 @@ void init_parser() {
   enum_list = new_map();
   map_put(types, "int", new_type_info(4, TY_INT));
   map_put(types, "char", new_type_info(1, TY_CHAR));
-  map_put(types, "void", new_type_info(0, TY_VOID));
+  map_put(types, "void", new_type_info(1, TY_VOID));
 }
 
 static node_t *params();
@@ -78,6 +78,7 @@ static node_t *add_expr();
 static node_t *relation_expr();
 static node_t *equal_expr();
 static node_t *logic_and_expr();
+static node_t *logic_or_expr();
 static node_t *assign_expr();
 static node_t *const_expr();
 
@@ -211,6 +212,11 @@ static node_t *unary() {
     node_t *node = new_node(ND_REF);
     node->lhs = unary();
     node->type = new_type(8, TY_PTR);
+    return node;
+  } else if (equal(peek(0), "!")) {
+    eat();
+    node_t *node = new_node(ND_NOT);
+    node->lhs = cast_expr();
     return node;
   } else if (equal(peek(0), "sizeof")) {
     eat();
@@ -352,8 +358,28 @@ static node_t *logic_and_expr() {
   return left;
 }
 
-static node_t *assign_expr() {
+static node_t *logic_or_expr() {
   node_t *left = logic_and_expr();
+  int op;
+  for (;;) {
+    if (equal(peek(0), "||"))
+      op = OP_LOGIC_OR;
+    else
+      break;
+
+    node_t *node = new_node(ND_EXPR);
+    eat();
+    node_t *right = logic_and_expr();
+    node->lhs = left;
+    node->op = op;
+    node->rhs = right;
+    left = node;
+  }
+  return left;
+}
+
+static node_t *assign_expr() {
+  node_t *left = logic_or_expr();
   int op;
   for (;;) {
     if (equal(peek(0), "="))
@@ -367,7 +393,7 @@ static node_t *assign_expr() {
 
     node_t *node = new_node(ND_EXPR);
     eat();
-    node_t *right = logic_and_expr();
+    node_t *right = logic_or_expr();
     node->lhs = left;
     node->op = op;
     node->rhs = right;
@@ -394,6 +420,11 @@ static void storage_class(node_t *node) {
   }
   if (equal(peek(0), "typedef")) {
     typedef_spec();
+    return;
+  }
+  if (equal(peek(0), "const")) {
+    eat();
+    node->flag->is_node_const = true;
     return;
   }
 }

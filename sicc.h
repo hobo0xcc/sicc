@@ -24,6 +24,8 @@ enum _token_enum {
   TK_NOT,
   TK_AND,
   TK_AND_AND,
+  TK_OR,
+  TK_OR_OR,
   TK_DOT,
   TK_ARROW,
 
@@ -77,6 +79,7 @@ enum _op_enum {
   OP_EQUAL,
   OP_NOT_EQUAL,
   OP_LOGIC_AND,
+  OP_LOGIC_OR,
 };
 
 enum _node_enum {
@@ -99,6 +102,7 @@ enum _node_enum {
   ND_VAR_DECL_LIST,
   ND_DEREF,
   ND_REF,
+  ND_NOT,
   ND_STRING,
   ND_CHARACTER,
   ND_SIZEOF,
@@ -138,6 +142,7 @@ enum _ir_enum {
   IR_DIV,        // Divided
   IR_GREAT,      // Greater
   IR_LESS,       // Less
+  IR_NOT,        // Not
   IR_STORE,      // Store register to var
   IR_LOAD,       // Load var to register
   IR_CALL,       // Call function
@@ -179,6 +184,7 @@ enum _ir_enum {
   IR_SUB_IMM,
   IR_MOV,
   IR_LOGAND,
+  IR_LOGOR,
   IR_CAST,
 };
 
@@ -235,6 +241,7 @@ typedef struct _flag {
   bool should_save;
   bool is_node_static;
   bool is_node_extern;
+  bool is_node_const;
 } flag_t;
 
 typedef struct _node {

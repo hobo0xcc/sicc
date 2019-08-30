@@ -303,6 +303,10 @@ void sema_walk(node_t *node, int stat) {
       error("Cannot cast to struct and void.");
     sema_walk(node->rhs, stat);
     break;
+  case ND_NOT:
+    sema_walk(node->lhs, STAT_EXPR);
+    node->type = node->lhs->type;
+    break;
   default:
     break;
   }

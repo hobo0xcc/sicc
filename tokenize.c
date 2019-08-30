@@ -225,6 +225,15 @@ void tokenize(char *s) {
       }
       continue;
     }
+    if (c == '|') {
+      if (*s == '|') {
+        s++;
+        vec_push(tokens, make_token(TK_OR_OR, "||", line));
+      } else {
+        vec_push(tokens, make_token(TK_OR, "|", line));
+      }
+      continue;
+    }
     if (c == '[') {
       vec_push(tokens, make_token(TK_LBRACKET, "[", line));
       continue;

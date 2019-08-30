@@ -176,16 +176,20 @@ void gen_asm(ir_t *ir) {
       emit("  sub %s, %s", REG(lhs), REG(rhs));
       break;
     case IR_MUL:
+      emit("  push rdx");
       emit("  mov rax, %s", regs[lhs]);
       emit("  mul %s", regs[rhs]);
       emit("  add rax, rdx");
       emit("  mov %s, %s", REG(lhs), REG(AX));
+      emit("  pop rdx");
       break;
     case IR_DIV:
+      emit("  push rdx");
       emit("  mov rax, %s", regs[lhs]);
       emit("  cqo");
       emit("  div %s", regs[rhs]);
       emit("  mov %s, %s", REG(lhs), REG(AX));
+      emit("  pop rdx");
       break;
     case IR_GREAT:
       emit("  cmp %s, %s", REG(lhs), REG(rhs));
@@ -197,6 +201,12 @@ void gen_asm(ir_t *ir) {
       emit("  cmp %s, %s", REG(lhs), REG(rhs));
       emit("  setl al");
       emit("  movzx %s, al", REG(lhs));
+      emit("  mov al, 0");
+      break;
+    case IR_NOT:
+      emit("  cmp %s, 0", regs[lhs]);
+      emit("  sete al");
+      emit("  movzx %s, al", regs[lhs]);
       emit("  mov al, 0");
       break;
     case IR_STORE:
@@ -328,6 +338,12 @@ void gen_asm(ir_t *ir) {
       break;
     case IR_LOGAND:
       emit("  and %s, %s", REG(lhs), REG(rhs));
+      emit("  setnz al");
+      emit("  movzx %s, al", REG(lhs));
+      emit("  mov al, 0");
+      break;
+    case IR_LOGOR:
+      emit("  or %s, %s", REG(lhs), REG(rhs));
       emit("  setnz al");
       emit("  movzx %s, al", REG(lhs));
       emit("  mov al, 0");

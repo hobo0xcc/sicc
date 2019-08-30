@@ -522,6 +522,9 @@ static int gen_expr(ir_t *ir, node_t *node) {
   case OP_LOGIC_AND:
     emit(ir, IR_LOGAND, left, right, size);
     break;
+  case OP_LOGIC_OR:
+    emit(ir, IR_LOGOR, left, right, size);
+    break;
   default:
     error("Unknown operator: %d", op);
   }
@@ -589,6 +592,11 @@ int gen_ir(ir_t *ir, node_t *node) {
   }
   if (node->ty == ND_REF) {
     int r = gen_lval(ir, node->lhs);
+    return r;
+  }
+  if (node->ty == ND_NOT) {
+    int r = gen_ir(ir, node->lhs);
+    emit(ir, IR_NOT, r, -1, -1);
     return r;
   }
   if (node->ty == ND_FUNC_CALL) {
