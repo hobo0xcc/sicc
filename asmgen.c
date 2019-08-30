@@ -126,7 +126,7 @@ void gen_asm(ir_t *ir) {
   emit(".section __DATA,_data");
   for (int i = 0; i < ngvars; i++) {
     gvar_t *gvar = vec_get(ir->gvars->items, i);
-    if (gvar->external)
+    if (!gvar->statical)
       emit(".global _%s", gvar->name);
     // Definition of uninitialized global variable
     if (gvar->is_null) {

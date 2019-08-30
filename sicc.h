@@ -4,6 +4,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#ifndef NULL
+#define NULL (void *)0
+#endif
+
 enum _token_enum {
   TK_EOF = 256,
   TK_NUM,
@@ -28,6 +32,7 @@ enum _token_enum {
   TK_OR_OR,
   TK_DOT,
   TK_ARROW,
+  TK_QUESTION,
 
   TK_LPAREN,
   TK_RPAREN,
@@ -80,6 +85,7 @@ enum _op_enum {
   OP_NOT_EQUAL,
   OP_LOGIC_AND,
   OP_LOGIC_OR,
+  OP_COND,
 };
 
 enum _node_enum {
@@ -128,6 +134,7 @@ enum _node_enum {
   ND_BREAK,
   ND_CONTINUE,
   ND_CAST,
+  ND_COND,
   ND_NOP,
 };
 
@@ -143,6 +150,7 @@ enum _ir_enum {
   IR_GREAT,      // Greater
   IR_LESS,       // Less
   IR_NOT,        // Not
+  IR_MOVTRUE,    // Move if true
   IR_STORE,      // Store register to var
   IR_LOAD,       // Load var to register
   IR_CALL,       // Call function
@@ -289,6 +297,7 @@ typedef struct _gvar {
   int is_null;
   node_t *init;
   bool external;
+  bool statical;
 } gvar_t;
 
 typedef struct _ir_env {
@@ -337,6 +346,7 @@ void grow_buf(buf_t *b, int len);
 void buf_push(buf_t *b, char c);
 void buf_append(buf_t *b, char *str);
 void buf_appendn(buf_t *b, char *str, int n);
+char buf_get(buf_t *b, int offset);
 size_t buf_len(buf_t *b);
 char *buf_str(buf_t *b);
 

@@ -79,6 +79,7 @@ static node_t *relation_expr();
 static node_t *equal_expr();
 static node_t *logic_and_expr();
 static node_t *logic_or_expr();
+static node_t *cond_expr();
 static node_t *assign_expr();
 static node_t *const_expr();
 
@@ -378,8 +379,27 @@ static node_t *logic_or_expr() {
   return left;
 }
 
-static node_t *assign_expr() {
+static node_t *cond_expr() {
   node_t *left = logic_or_expr();
+  if (equal(peek(0), "?")) {
+    eat();
+    node_t *lhs = assign_expr();
+    expect(eat(), ":");
+    node_t *rhs = cond_expr();
+    node_t *node = new_node(ND_EXPR);
+    node->lhs = left;
+    node_t *cond = new_node(ND_COND);
+    cond->lhs = lhs;
+    cond->rhs = rhs;
+    node->rhs = cond;
+    node->op = OP_COND;
+    return node;
+  }
+  return left;
+}
+
+static node_t *assign_expr() {
+  node_t *left = cond_expr();
   int op;
   for (;;) {
     if (equal(peek(0), "="))
@@ -393,7 +413,7 @@ static node_t *assign_expr() {
 
     node_t *node = new_node(ND_EXPR);
     eat();
-    node_t *right = logic_or_expr();
+    node_t *right = cond_expr();
     node->lhs = left;
     node->op = op;
     node->rhs = right;

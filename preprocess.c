@@ -37,7 +37,10 @@ static char peek(pp_env_t *e, int offset) { return e->s[e->cur_p + offset]; }
 
 static char eat(pp_env_t *e) { return e->s[e->cur_p++]; }
 
-static bool is_eof(pp_env_t *e) { return peek(e, 0) == 0; }
+static bool is_eof(pp_env_t *e) {
+  char c = peek(e, 0);
+  return c == 0;
+}
 
 static pp_env_t *new_env(char *s) {
   pp_env_t *e = calloc(1, sizeof(pp_env_t));
@@ -54,8 +57,10 @@ static macro_t *new_macro(char *name) {
 
 static char *get_string(pp_env_t *e) {
   buf_t *b = new_buf();
-  if (!isalpha(peek(e, 0)))
-    error("Not a string: %c", peek(e, 0));
+  if (!isalpha(peek(e, 0))) {
+    buf_push(b, eat(e));
+    return buf_str(b);
+  }
 
   while (isalnum(peek(e, 0)) || peek(e, 0) == '_') {
     buf_push(b, eat(e));
@@ -88,7 +93,6 @@ static bool cmp_string(pp_env_t *e, char *str, int offset) {
 static macro_t *parse_macro(pp_env_t *e) {
   char *name = get_string(e);
   macro_t *m = new_macro(name);
-  SKIP_SPACE(e);
   map_t *args = parse_args(e);
   buf_t *buf = new_buf();
   int args_len = map_len(args);
@@ -181,7 +185,8 @@ static void parse_include(pp_env_t *e, buf_t *b) {
     while ((c = peek(e, 0)) && c != '\"')
       buf_push(name, eat(e));
     char *s = read_file(buf_str(name));
-    buf_append(b, s);
+    char *pp_s = preprocess(s, NULL);
+    buf_append(b, pp_s);
     eat(e);
   } else if (c == '<') {
     eat(e);
@@ -248,7 +253,12 @@ static void pp_next(pp_env_t *e, buf_t *b) {
       parse_if_section(e, b, ident);
     }
   } else if (isalpha(c)) {
-    replace_macro(e, b);
+    if (map_find(macros, peek_string(e, 0)))
+      replace_macro(e, b);
+    else {
+      char *s = get_string(e);
+      buf_appendn(b, s, strlen(s));
+    }
   } else {
     buf_push(b, eat(e));
   }

@@ -47,5 +47,4 @@ void debug(char *s) {
   printf("%s\n", p);
   tokenize(p);
   debug_tokens(tokens);
-  printf("%s\n", p);
 }

@@ -126,9 +126,11 @@ static void gen_initializer(ir_t *ir, node_t *node, int offset) {
   for (int i = 0; i < len; i++) {
     node_t *e = vec_get(node->initializer, i);
     int r = gen_ir(ir, e);
-    if (!(e->ty == ND_INITIALIZER))
+    if (!(e->ty == ND_INITIALIZER)) {
       emit(ir, IR_STORE_VAR, offset, r, e->type->size);
-    offset += e->type->size;
+      nreg--;
+    }
+    offset -= e->type->size;
   }
 }
 
@@ -364,6 +366,8 @@ static void gen_stmt(ir_t *ir, node_t *node) {
     gvar->init = NULL;
     if (node->flag->is_node_extern)
       gvar->external = true;
+    if (node->flag->is_node_static)
+      gvar->statical = true;
     map_put(ir->gvars, node->str, gvar);
     return;
   }
@@ -525,6 +529,15 @@ static int gen_expr(ir_t *ir, node_t *node) {
   case OP_LOGIC_OR:
     emit(ir, IR_LOGOR, left, right, size);
     break;
+  case OP_COND:
+    emit(ir, IR_MOV, left, nreg - 1, size);
+    emit(ir, IR_JTRUE, left, nlabel++, -1);
+    emit(ir, IR_JMP, nlabel++, -1, -1);
+    emit(ir, IR_LABEL, nlabel - 2, -1, -1);
+    emit(ir, IR_MOV, left, nreg - 2, size);
+    emit(ir, IR_LABEL, nlabel - 1, -1, -1);
+    nreg--;
+    break;
   default:
     error("Unknown operator: %d", op);
   }
@@ -598,6 +611,11 @@ int gen_ir(ir_t *ir, node_t *node) {
     int r = gen_ir(ir, node->lhs);
     emit(ir, IR_NOT, r, -1, -1);
     return r;
+  }
+  if (node->ty == ND_COND) {
+    gen_ir(ir, node->lhs);
+    gen_ir(ir, node->rhs);
+    return -1;
   }
   if (node->ty == ND_FUNC_CALL) {
     gen_ir(ir, node->rhs);

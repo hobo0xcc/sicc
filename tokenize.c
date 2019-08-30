@@ -216,6 +216,10 @@ void tokenize(char *s) {
         continue;
       }
     }
+    if (c == '?') {
+      vec_push(tokens, make_token(TK_QUESTION, "?", line));
+      continue;
+    }
     if (c == '&') {
       if (*s == '&') {
         s++;

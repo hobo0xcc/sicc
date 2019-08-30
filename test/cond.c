@@ -7,5 +7,6 @@ int main(void) {
   int c = 0;
   if (a || c)
     printf("Yeah!\n");
-  return c;
+  int d = a ? 10 : 20;
+  return d;
 }

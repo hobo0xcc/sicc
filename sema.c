@@ -307,6 +307,10 @@ void sema_walk(node_t *node, int stat) {
     sema_walk(node->lhs, STAT_EXPR);
     node->type = node->lhs->type;
     break;
+  case ND_COND:
+    sema_walk(node->lhs, STAT_EXPR);
+    sema_walk(node->rhs, STAT_EXPR);
+    break;
   default:
     break;
   }

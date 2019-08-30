@@ -3,22 +3,25 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 char *read_file(char *name) {
   buf_t *s = new_buf();
-  FILE *f = fopen(name, "rb");
-  if (f == NULL)
+  // FILE *f = fopen(name, "rb");
+  int fd = open(name, O_RDONLY);
+  if (fd == -1)
     error("Can't open the file: %s", name);
   size_t size = 0;
   for (;;) {
     char buf[4096];
-    int nread = fread(buf, sizeof(char), 4096, f);
+    int nread = read(fd, buf, 4096);
     size += nread;
     buf_appendn(s, buf, nread);
     if (nread < 4096)
       break;
   }
-  fclose(f);
+  close(fd);
   return buf_str(s);
 }
 
@@ -175,6 +178,10 @@ void buf_append(buf_t *b, char *str) {
 void buf_appendn(buf_t *b, char *str, int n) {
   for (int i = 0; i < n; i++)
     buf_push(b, str[i]);
+}
+
+char buf_get(buf_t *b, int offset) {
+  return b->data[offset];
 }
 
 size_t buf_len(buf_t *b) { return b->len; }
