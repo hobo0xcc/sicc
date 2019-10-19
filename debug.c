@@ -14,6 +14,7 @@ void debug_tokens(vec_t *tokens) {
     token_t *tk = vec_get(tokens, i);
     printf("[%s]: %d\n", tk->str, tk->ty);
   }
+  return;
 }
 
 void debug_node(node_t *node) {
@@ -31,7 +32,7 @@ void debug_node(node_t *node) {
 
 void debug_ir(char *filename) {
   char *str = read_file(filename);
-  char *src = preprocess(str, NULL);
+  char *src = preprocess(str, filename, NULL);
   tokenize(src);
   init_parser();
   node_t *node = parse();
@@ -39,12 +40,14 @@ void debug_ir(char *filename) {
   ir_t *ir = new_ir();
   gen_ir(ir, node);
   print_ir(ir);
+  return;
 }
 
 void debug(char *s) {
   char *str = read_file(s);
-  char *p = preprocess(str, NULL);
+  char *p = preprocess(str, s, NULL);
   printf("%s\n", p);
   tokenize(p);
   debug_tokens(tokens);
+  return;
 }

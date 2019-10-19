@@ -8,12 +8,12 @@ static int cur = 0;
 map_t *types;     // type_info_t map
 map_t *enum_list; // intptr_t map
 
-static type_info_t *new_type_info(int size, int ty) {
-  type_info_t *tyinfo = calloc(1, sizeof(type_info_t));
-  tyinfo->size = size;
-  tyinfo->ty = ty;
-  return tyinfo;
-}
+// static type_info_t *new_type_info(int size, int ty) {
+//   type_info_t *tyinfo = calloc(1, sizeof(type_info_t));
+//   tyinfo->size = size;
+//   tyinfo->ty = ty;
+//   return tyinfo;
+// }
 
 static token_t *peek(int offset) { return vec_get(tokens, cur + offset); }
 
@@ -63,9 +63,10 @@ type_t *new_type(int size, int ty) {
 void init_parser() {
   types = new_map();
   enum_list = new_map();
-  map_put(types, "int", new_type_info(4, TY_INT));
-  map_put(types, "char", new_type_info(1, TY_CHAR));
-  map_put(types, "void", new_type_info(1, TY_VOID));
+  map_put(types, "int", new_type(4, TY_INT));
+  map_put(types, "char", new_type(1, TY_CHAR));
+  map_put(types, "void", new_type(1, TY_VOID));
+  map_put(types, "long", new_type(8, TY_LONG));
 }
 
 static node_t *params();
@@ -140,7 +141,7 @@ static node_t *primary() {
     node->str = eat()->str;
     return node;
   }
-  error("Unknown identifier: %s", peek(0)->str);
+  error_at(peek(0), "Unknown identifier: %s", peek(0)->str);
   return NULL;
 }
 
@@ -168,7 +169,7 @@ static node_t *postfix() {
       t->lhs = node;
       token_t *name = eat();
       if (name->ty != TK_IDENT) {
-        error("Identifier expected but got %s: line %s", name->str, name->line);
+        error_at(name, "Identifier expected but got %s: line %s", name->str, name->line);
       }
       t->str = name->str;
       node = t;
@@ -179,7 +180,7 @@ static node_t *postfix() {
       t->lhs = node;
       token_t *name = eat();
       if (name->ty != TK_IDENT) {
-        error("Identifier expected but got %s: line %s", name->str, name->line);
+        error_at(name, "Identifier expected but got %s: line %s", name->str, name->line);
       }
       t->str = name->str;
       node = t;
@@ -219,6 +220,11 @@ static node_t *unary() {
     node_t *node = new_node(ND_NOT);
     node->lhs = cast_expr();
     return node;
+  } else if (equal(peek(0), "-")) {
+    eat();
+    node_t *node = new_node(ND_MINUS);
+    node->lhs = cast_expr();
+    return node;
   } else if (equal(peek(0), "sizeof")) {
     eat();
     if (!equal(peek(0), "(")) {
@@ -242,6 +248,10 @@ static node_t *cast_expr() {
     node_t *node = new_node(ND_CAST);
     eat();
     type_t *ty = type();
+    if (!ty) {
+      cur--;
+      return unary();
+    }
     expect(eat(), ")");
     node->type = ty;
     node->rhs = cast_expr();
@@ -303,6 +313,10 @@ static node_t *relation_expr() {
       op = '>';
     else if (equal(peek(0), "<"))
       op = '<';
+    else if (equal(peek(0), ">="))
+      op = OP_GREAT_EQ;
+    else if (equal(peek(0), "<="))
+      op = OP_LESS_EQ;
     else
       break;
 
@@ -456,10 +470,12 @@ static type_t *type() {
   } else if (equal(peek(0), "enum")) {
     return enum_spec();
   } else {
-    char *type_name = peek(0)->str;
-    type_info_t *info = (type_info_t *)map_get(types, type_name);
-    type = new_type(info->size, info->ty);
-    type->member = info->m;
+    token_t *name = peek(0);
+    type_t *ty = map_get(types, name->str);
+    if (!ty)
+      return NULL;
+    type = new_type(ty->size, ty->ty);
+    type->member = ty->member;
     eat();
   }
 
@@ -496,7 +512,7 @@ static node_t *init() {
 static void decl_init(node_t *node) {
   token_t *tk = peek(0);
   if (!type_equal(tk, TK_IDENT))
-    error("Var name expected but got %s", peek(0)->str);
+    error_at(peek(0), "Var name expected but got %s", peek(0)->str);
   node->str = eat()->str;
   type_t *array_elem = node->type;
   for (; equal(peek(0), "["); array_elem = node->type) {
@@ -509,7 +525,7 @@ static void decl_init(node_t *node) {
     } else {
       node_t *expr = assign_expr();
       if (expr->ty != ND_NUM)
-        error("Specify an array size with expr is not implemented yet");
+        error_at(peek(0), "Specify an array size with expr is not implemented yet");
       int size = array_elem->size;
       node->type = new_type(size, TY_ARRAY);
       node->type->size_deref = array_elem->size;
@@ -584,7 +600,7 @@ static member_t *struct_declarator() {
   while (!equal(peek(0), "}")) {
     node_t *node = decl(NULL);
     if (node->ty != ND_VAR_DECL && node->ty != ND_VAR_DECL_LIST) {
-      error("Variable declaration expected: line %d", peek(0)->line);
+      error_at(peek(0), "Variable declaration expected: line %d", peek(0)->line);
     }
     if (node->ty == ND_VAR_DECL_LIST) {
       int len = vec_len(node->vars);
@@ -612,28 +628,24 @@ static type_t *struct_spec() {
   token_t *tk = peek(0);
   if (tk->ty == TK_IDENT) {
     if (peek(1)->ty != TK_LBRACE) {
-      type_info_t *info = map_get(types, eat()->str);
-      type_t *ty = new_type(info->size, info->ty);
-      ty->member = info->m;
+      token_t *name = eat();
+      type_t *ty = map_get(types, name->str);
       return ty;
     }
     eat();
+    type_t *ty = new_type(0, TY_STRUCT);
+    map_put(types, tk->str, ty);
     member_t *m = struct_declarator();
-    type_info_t *info = new_type_info(m->size, TY_STRUCT);
-    info->m = m;
-    map_put(types, tk->str, info);
-    type_t *type = new_type(info->size, info->ty);
-    type->member = info->m;
-    return type;
+    ty->size = m->size;
+    ty->member = m;
+    return ty;
   } else if (tk->ty == TK_LBRACE) {
     member_t *m = struct_declarator();
-    type_info_t *info = new_type_info(m->size, TY_STRUCT);
-    info->m = m;
-    type_t *type = new_type(info->size, info->ty);
-    type->member = info->m;
-    return type;
+    type_t *ty = new_type(m->size, TY_STRUCT);
+    ty->member = m;
+    return ty;
   } else {
-    error("Variable name expected but got %s", tk->str);
+    error_at(tk, "Variable name expected but got %s", tk->str);
     return NULL;
   }
 }
@@ -643,9 +655,9 @@ static type_t *typedef_spec() {
   node_t *node = decl(NULL);
   if (node->str == NULL)
     return node->type;
-  type_info_t *info = new_type_info(node->type->size, node->type->ty);
-  info->m = node->type->member;
-  map_put(types, node->str, info);
+  type_t *ty = new_type(node->type->size, node->type->ty);
+  ty->member = node->type->member;
+  map_put(types, node->str, ty);
   return node->type;
 }
 
@@ -655,12 +667,12 @@ static void enum_declarator() {
   while (!equal(peek(0), "}")) {
     token_t *tk = eat();
     if (tk->ty != TK_IDENT)
-      error("Identifier expected but got %s: line %d", tk->str, tk->line);
+      error_at(tk, "Identifier expected but got %s: line %d", tk->str, tk->line);
     if (equal(peek(0), "=")) {
       eat();
       token_t *num = eat();
       if (num->ty != TK_NUM)
-        error("Number expected but got %s: line %d", num->str, num->line);
+        error_at(num, "Number expected but got %s: line %d", num->str, num->line);
       iota = atoi(num->str);
     }
 
@@ -675,10 +687,10 @@ static void enum_declarator() {
 
 static type_t *enum_spec() {
   expect(eat(), "enum");
-  type_info_t *info = map_get(types, "int");
-  type_t *type = new_type(info->size, info->ty);
+  type_t *ty = map_get(types, "int");
+  type_t *type = new_type(ty->size, ty->ty);
   if (type_equal(peek(0), TK_IDENT)) {
-    map_put(types, eat()->str, info);
+    map_put(types, eat()->str, ty);
   }
   if (equal(peek(0), "{")) {
     enum_declarator();
@@ -700,6 +712,11 @@ static node_t *stmt() {
   if (type_equal(peek(0), TK_RETURN)) {
     eat();
     node_t *node = new_node(ND_RETURN);
+    if (peek(0)->ty == TK_SEMICOLON) {
+      expect(eat(), ";");
+      node->lhs = NULL;
+      return node;
+    }
     node->lhs = assign_expr();
     expect(eat(), ";");
     return node;
@@ -781,7 +798,7 @@ static node_t *stmt() {
     node_t *node = new_node(ND_GOTO);
     if (!type_equal(peek(0), TK_IDENT)) {
       token_t *tk = peek(0);
-      error("Identifier expected but got %s: line %d\n", tk->str, tk->line);
+      error_at(tk, "Identifier expected but got %s: line %d\n", tk->str, tk->line);
     }
     node->str = eat()->str;
     expect(eat(), ";");
@@ -808,6 +825,7 @@ static node_t *stmt() {
     expect(eat(), ";");
     return node;
   } else if (peek(0)->ty == TK_SEMICOLON) {
+    eat();
     return new_node(ND_NOP);
   } else {
     node_t *node = assign_expr();
@@ -826,7 +844,8 @@ static node_t *compound_stmt() {
       expect(eat(), ";");
       vec_push(node->stmts, decls);
     } else {
-      vec_push(node->stmts, stmt());
+      node_t *st = stmt();
+      vec_push(node->stmts, st);
     }
   }
   expect(eat(), "}");
@@ -838,6 +857,11 @@ static node_t *arguments() {
   node->args = new_vec();
   expect(eat(), "(");
   while (!equal(peek(0), ")")) {
+    if (type_equal(peek(0), TK_VA_SPEC)) {
+      eat();
+      expect(eat(), ")");
+      return node;
+    }
     node_t *arg = new_node(ND_VAR_DECL);
     type_t *ty = type();
     if (ty->ty == TY_VOID && equal(peek(0), ")")) {
@@ -862,12 +886,12 @@ static node_t *function(type_t *ty) {
   } else
     node->type = ty;
   if (!type_equal(peek(0), TK_IDENT))
-    error("function name expected, but got %s", peek(0)->str);
+    error_at(peek(0), "Function name expected, but got %s", peek(0)->str);
   node->str = eat()->str;
   node_t *args = arguments();
   if (equal(peek(0), ";")) {
     eat();
-    return new_node(ND_NOP);
+    return new_node(ND_FUNC_DECL);
   }
   node_t *prog = compound_stmt();
   node->lhs = prog;
@@ -883,7 +907,7 @@ node_t *parse() {
 
   while (!type_equal(peek(0), TK_EOF)) {
     node_t *d = ext_decl(NULL);
-    if (d->ty == ND_FUNC)
+    if (d->ty == ND_FUNC || d->ty == ND_FUNC_DECL)
       vec_push(node->funcs, d);
     else {
       vec_push(node->decl_list, d);

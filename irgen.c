@@ -3,12 +3,28 @@
 #include <stdlib.h>
 
 static int nreg = 0;
+static int narg = 0;
 static int nlabel = 1;
 static int nbblabel = 1;
 static int nbblabel_start = 1;
 static int nbblabel_end = 1;
 static int stack_size = 0;
 static int cur_stack = 0;
+
+int builtin_va_start(ir_t *ir, node_t *node);
+int builtin_va_arg(ir_t *ir, node_t *node);
+int builtin_va_end(ir_t *ir, node_t *node);
+
+static map_t *init_builtin() {
+  map_t *builtins = new_map();
+  map_put(builtins, "__builtin_va_arg", builtin_va_arg);
+  return builtins;
+}
+
+static int call_builtin(ir_t *ir, char *name, node_t *arg) {
+  int (*func)() = map_get(ir->builtins, name);
+  return func(ir, arg);
+}
 
 ir_t *new_ir() {
   ir_t *ir = calloc(1, sizeof(ir_t));
@@ -18,6 +34,7 @@ ir_t *new_ir() {
   ir->gfuncs = new_vec();
   ir->const_str = new_vec();
   ir->labels = new_map();
+  ir->builtins = init_builtin();
   ir->env = calloc(1, sizeof(ir_env_t));
   return ir;
 }
@@ -58,6 +75,21 @@ static int alloc_stack(int size) {
 static int free_stack(int size) {
   cur_stack -= size;
   return cur_stack;
+}
+
+int builtin_va_start(ir_t *ir, node_t *node) {
+  node_t *vlist = vec_get(node->params, 0);
+  int r = gen_ir(ir, vlist);
+  emit(ir, IR_MOV_IMM, r, ir->env->final_arg, vlist->type->size);
+  nreg--;
+  return -1;
+}
+
+int builtin_va_arg(ir_t *ir, node_t *node) {
+  node_t *vlist = vec_get(node->params, 0);
+  int r = gen_ir(ir, vlist);
+  nreg--;
+  return -1;
 }
 
 static void cast_reg(int r, type_t *from, type_t *to);
@@ -132,6 +164,8 @@ static void gen_initializer(ir_t *ir, node_t *node, int offset) {
     }
     offset -= e->type->size;
   }
+
+  return;
 }
 
 static void gen_stmt(ir_t *ir, node_t *node) {
@@ -186,27 +220,28 @@ static void gen_stmt(ir_t *ir, node_t *node) {
   if (node->ty == ND_ARGS) {
     int len = vec_len(node->args); // Arguments length
     int arg_stack = -16;
-    for (int i = 0; i < len; i++) {
-      node_t *arg = vec_get(node->args, i);
-      if (i > 5) {
+    for (narg = 0; narg < len; narg++) {
+      node_t *arg = vec_get(node->args, narg);
+      if (narg > 5) {
         int offset = arg_stack;
         var_t *var = new_var(offset, arg->type->size);
         map_put(ir->vars, arg->str, var);
         if (arg->type->ty == TY_ARRAY)
-          emit(ir, IR_LOAD_ARG, offset, i, 8);
+          emit(ir, IR_LOAD_ARG, offset, narg, 8);
         else
-          emit(ir, IR_LOAD_ARG, offset, i, arg->type->size);
+          emit(ir, IR_LOAD_ARG, offset, narg, arg->type->size);
         arg_stack -= arg->type->size;
       } else {
         int offset = alloc_stack(arg->type->size);
         var_t *var = new_var(offset, arg->type->size);
         map_put(ir->vars, arg->str, var);
         if (arg->type->ty == TY_ARRAY)
-          emit(ir, IR_LOAD_ARG, offset, i, 8);
+          emit(ir, IR_LOAD_ARG, offset, narg, 8);
         else
-          emit(ir, IR_LOAD_ARG, offset, i, arg->type->size);
+          emit(ir, IR_LOAD_ARG, offset, narg, arg->type->size);
       }
     }
+    ir->env->final_arg = narg;
     return;
   }
   if (node->ty == ND_STMTS) {
@@ -226,7 +261,9 @@ static void gen_stmt(ir_t *ir, node_t *node) {
     return;
   }
   if (node->ty == ND_RETURN) {
-    int r = gen_ir(ir, node->lhs);
+    int r = 7;
+    if (node->lhs)
+      r = gen_ir(ir, node->lhs);
     emit(ir, IR_FREE, stack_size, -1, -1);
     emit(ir, IR_RET, r, -1, -1);
     emit(ir, IR_LEAVE, -1, -1, -1);
@@ -445,12 +482,17 @@ static void gen_stmt(ir_t *ir, node_t *node) {
     emit(ir, IR_JMP_BBSTART, nbblabel_start - 1, -1, -1);
     return;
   }
+  if (node->ty == ND_FUNC_DECL) {
+    return;
+  }
 
   error("Not implemented yet: %d", node->ty);
+  return;
 }
 
 static int gen_assign(ir_t *ir, node_t *node, int left, int right) {
   if (left == -1) {
+    printf("%d\n", node->lhs->ty);
     error("%s is not declared", node->lhs->str);
     return -1;
   } else {
@@ -538,6 +580,12 @@ static int gen_expr(ir_t *ir, node_t *node) {
     emit(ir, IR_LABEL, nlabel - 1, -1, -1);
     nreg--;
     break;
+  case OP_GREAT_EQ:
+    emit(ir, IR_GREAT_EQ, left, right, size);
+    break;
+  case OP_LESS_EQ:
+    emit(ir, IR_LESS_EQ, left, right, size);
+    break;
   default:
     error("Unknown operator: %d", op);
   }
@@ -612,12 +660,20 @@ int gen_ir(ir_t *ir, node_t *node) {
     emit(ir, IR_NOT, r, -1, -1);
     return r;
   }
+  if (node->ty == ND_MINUS) {
+    int r = gen_ir(ir, node->lhs);
+    emit(ir, IR_NEG, r, -1, -1);
+    return r;
+  }
   if (node->ty == ND_COND) {
     gen_ir(ir, node->lhs);
     gen_ir(ir, node->rhs);
     return -1;
   }
   if (node->ty == ND_FUNC_CALL) {
+    if (map_find(ir->builtins, node->str)) {
+      return call_builtin(ir, node->str, node->rhs);
+    }
     gen_ir(ir, node->rhs);
     for (int i = 0; i < nreg; i++) {
       emit(ir, IR_PUSH, i, -1, -1);
@@ -843,4 +899,6 @@ void print_ir(ir_t *ir) {
       error("Unknown operator: %d", ins->op);
     }
   }
+
+  return;
 }

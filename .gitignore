@@ -2,3 +2,4 @@ sicc
 *.o
 test/a.out
 test/*.s
+compile_flags.txt

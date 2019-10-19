@@ -34,6 +34,7 @@ void write_one_fmt(char *dst, char *orig, char *str) {
   buf_append(b, str);
   buf_append(b, (orig + (i + 2)));
   strcpy(dst, buf_str(b));
+  return;
 }
 
 vec_t *new_vec() {
@@ -51,16 +52,19 @@ void grow_vec(vec_t *v, int len) {
   while (size > v->cap)
     v->cap *= 2;
   v->data = realloc(v->data, v->cap);
+  return;
 }
 
 void vec_push(vec_t *v, void *p) {
   grow_vec(v, 1);
   v->data[v->len++] = p;
+  return;
 }
 
 void vec_pop(vec_t *v) {
   v->len -= 1;
   v->data[v->len] = NULL;
+  return;
 }
 
 void vec_append(vec_t *v, int len, ...) {
@@ -71,12 +75,14 @@ void vec_append(vec_t *v, int len, ...) {
     vec_push(v, va_arg(ap, void *));
   }
   va_end(ap);
+  return;
 }
 
 void vec_set(vec_t *v, int pos, void *p) {
   if (pos > v->len || pos < 0)
     return;
   v->data[pos] = p;
+  return;
 }
 
 void *vec_get(vec_t *v, int pos) {
@@ -104,6 +110,7 @@ void map_put(map_t *m, char *key, void *item) {
   vec_push(m->keys, key);
   vec_push(m->items, item);
   m->len++;
+  return;
 }
 
 void map_set(map_t *m, char *key, void *item) {
@@ -111,6 +118,7 @@ void map_set(map_t *m, char *key, void *item) {
   if (i == -1)
     return;
   vec_set(m->items, i, item);
+  return;
 }
 
 void *map_get(map_t *m, char *key) {
@@ -143,6 +151,7 @@ void map_pop(map_t *m) {
   vec_pop(m->keys);
   vec_pop(m->items);
   m->len--;
+  return;
 }
 
 size_t map_len(map_t *m) { return m->len; }
@@ -162,22 +171,26 @@ void grow_buf(buf_t *b, int len) {
   while (blen > b->cap)
     b->cap *= 2;
   b->data = realloc(b->data, b->cap);
+  return;
 }
 
 void buf_push(buf_t *b, char c) {
   grow_buf(b, 1);
   b->data[b->len++] = c;
+  return;
 }
 
 void buf_append(buf_t *b, char *str) {
   int len = strlen(str);
   for (int i = 0; i < len; i++)
     buf_push(b, str[i]);
+  return;
 }
 
 void buf_appendn(buf_t *b, char *str, int n) {
   for (int i = 0; i < n; i++)
     buf_push(b, str[i]);
+  return;
 }
 
 char buf_get(buf_t *b, int offset) {

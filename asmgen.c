@@ -31,6 +31,7 @@ static void emit(const char *fmt, ...) {
   vfprintf(stdout, fmt, ap);
   fprintf(stdout, "\n");
   va_end(ap);
+  return;
 }
 
 static const char *ptr_size(ins_t *ins) {
@@ -109,6 +110,7 @@ static void init_global_var(ir_t *ir, node_t *init) {
   }
   
   error("Cannot initialize global var with %s", init->ty);
+  return;
 }
 
 void gen_asm(ir_t *ir) {
@@ -169,6 +171,11 @@ void gen_asm(ir_t *ir) {
       if (rhs < 6)
         emit("  mov %s [rbp%+d], %s", ptr_size(ins), -lhs, ARG_REG(rhs));
       break;
+    case IR_MOV_ARG:
+      if (rhs < 0)
+        emit("  mov %s, %s [rbp-%+d]", REG(lhs), ptr_size(ins), -rhs);
+      else if (rhs < 6)
+        emit("  mov %s, %s", REG(lhs), ARG_REG(rhs));
     case IR_ADD:
       emit("  add %s, %s", REG(lhs), REG(rhs));
       break;
@@ -353,8 +360,24 @@ void gen_asm(ir_t *ir) {
         emit("  movzx %s, %s", regs[lhs], REG(lhs));
       }
       break;
+    case IR_NEG:
+      emit("  neg %s", regs[lhs]);
+      break;
+    case IR_GREAT_EQ:
+      emit("  cmp %s, %s", REG(lhs), REG(rhs));
+      emit("  setge al");
+      emit("  movzx %s, al", REG(lhs));
+      emit("  mov al, 0");
+      break;
+    case IR_LESS_EQ:
+      emit("  cmp %s, %s", REG(lhs), REG(rhs));
+      emit("  setle al");
+      emit("  movzx %s, al", REG(lhs));
+      emit("  mov al, 0");
+      break;
     default:
       error("Unknown IR type: %d", ins->op);
     }
   }
+  return;
 }

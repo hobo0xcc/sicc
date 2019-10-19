@@ -57,7 +57,7 @@ static macro_t *new_macro(char *name) {
 
 static char *get_string(pp_env_t *e) {
   buf_t *b = new_buf();
-  if (!isalpha(peek(e, 0))) {
+  if (!(isalpha(peek(e, 0)) || peek(e, 0) == '_')) {
     buf_push(b, eat(e));
     return buf_str(b);
   }
@@ -184,10 +184,11 @@ static void parse_include(pp_env_t *e, buf_t *b) {
     buf_t *name = new_buf();
     while ((c = peek(e, 0)) && c != '\"')
       buf_push(name, eat(e));
-    char *s = read_file(buf_str(name));
-    char *pp_s = preprocess(s, NULL);
-    buf_append(b, pp_s);
     eat(e);
+    char *filename = buf_str(name);
+    char *s = read_file(filename);
+    char *pp_s = preprocess(s, filename, NULL);
+    buf_append(b, pp_s);
   } else if (c == '<') {
     eat(e);
     // ignore
@@ -264,7 +265,7 @@ static void pp_next(pp_env_t *e, buf_t *b) {
   }
 }
 
-char *preprocess(char *s, pp_env_t *e) {
+char *preprocess(char *s, char *filename, pp_env_t *e) {
   if (!e)
     e = new_env(s);
   macros = new_map();

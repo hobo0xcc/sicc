@@ -1,3 +1,4 @@
 - [x] Add types of variables. e.g. 'int', 'char', 'void'.
 - [x] Implement IR phase.
 - [x] Add pointer type.
+- [ ] Implement a builtin functions.

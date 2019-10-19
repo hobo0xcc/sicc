@@ -8,6 +8,19 @@
 #define NULL (void *)0
 #endif
 
+#ifndef __STDBOOL_H
+#define __STDBOOL_H
+typedef enum {
+  false = 0,
+  true = 1,
+} bool;
+#endif
+
+#ifndef _SIZE_T
+#define _SIZE_T
+typedef long size_t;
+#endif
+
 enum _token_enum {
   TK_EOF = 256,
   TK_NUM,
@@ -21,8 +34,10 @@ enum _token_enum {
   TK_MINUS_ASSIGN,
   TK_PLUS_PLUS,
   TK_MINUS_MINUS,
-  TK_GREATER,
+  TK_GREAT,
   TK_LESS,
+  TK_GREAT_EQ,
+  TK_LESS_EQ,
   TK_NOT_EQUAL,
   TK_EQUAL,
   TK_NOT,
@@ -33,6 +48,7 @@ enum _token_enum {
   TK_DOT,
   TK_ARROW,
   TK_QUESTION,
+  TK_VA_SPEC,
 
   TK_LPAREN,
   TK_RPAREN,
@@ -72,6 +88,7 @@ enum _type_enum {
   TY_INT,
   TY_CHAR,
   TY_VOID,
+  TY_LONG,
   TY_PTR,
   TY_STRUCT,
   TY_ARRAY,
@@ -79,17 +96,20 @@ enum _type_enum {
 };
 
 enum _op_enum {
-  OP_PLUS_ASSIGN,
+  OP_PLUS_ASSIGN = 256,
   OP_MINUS_ASSIGN,
   OP_EQUAL,
   OP_NOT_EQUAL,
   OP_LOGIC_AND,
   OP_LOGIC_OR,
   OP_COND,
+  OP_GREAT_EQ,
+  OP_LESS_EQ,
 };
 
 enum _node_enum {
   ND_FUNC = 256,
+  ND_FUNC_DECL,
   ND_FUNCS,
   ND_ARGS,
   ND_PARAMS,
@@ -109,13 +129,11 @@ enum _node_enum {
   ND_DEREF,
   ND_REF,
   ND_NOT,
+  ND_MINUS,
   ND_STRING,
   ND_CHARACTER,
   ND_SIZEOF,
   ND_DEREF_INDEX,
-  // ND_DEREF_LVAL,
-  // ND_DEREF_INDEX_LVAL,
-  // ND_IDENT_LVAL,
   ND_INITIALIZER,
   ND_EXTERNAL,
   ND_EXT_VAR_DEF,
@@ -191,13 +209,18 @@ enum _ir_enum {
   IR_ADD_IMM,
   IR_SUB_IMM,
   IR_MOV,
+  IR_MOV_ARG,
   IR_LOGAND,
   IR_LOGOR,
   IR_CAST,
+  IR_NEG,
+  IR_GREAT_EQ,
+  IR_LESS_EQ,
 };
 
 typedef struct _vec {
-  int cap, len;
+  int cap;
+  int len;
   void **data;
 } vec_t;
 
@@ -208,7 +231,8 @@ typedef struct _map {
 } map_t;
 
 typedef struct _buf {
-  int len, cap;
+  int len;
+  int cap;
   char *data;
 } buf_t;
 
@@ -221,6 +245,7 @@ typedef struct _token {
   int ty;
   char *str;
   int line;
+  int pos;
 } token_t;
 
 typedef struct _member {
@@ -229,11 +254,11 @@ typedef struct _member {
   int size;
 } member_t;
 
-typedef struct _type_info {
-  member_t *m;
-  int size;
-  int ty;
-} type_info_t;
+// typedef struct _type_info {
+//   member_t *m;
+//   int size;
+//   int ty;
+// } type_info_t;
 
 typedef struct _type {
   int size;
@@ -261,6 +286,7 @@ typedef struct _node {
   int num;
   int size;
   type_t *type;
+  token_t *tk;
   struct _node *else_stmt;
   struct _node *init;
   struct _node *cond;
@@ -302,6 +328,7 @@ typedef struct _gvar {
 
 typedef struct _ir_env {
   node_t *before_continue;
+  int final_arg;
 } ir_env_t;
 
 typedef struct _ir {
@@ -311,6 +338,7 @@ typedef struct _ir {
   vec_t *gfuncs;    // char * list
   vec_t *const_str; // char * list
   map_t *labels;
+  map_t *builtins;
   int len;        // code length
   int stack_size; // max stack size in function
   ir_env_t *env;
@@ -359,7 +387,7 @@ void debug(char *s);
 /* preprocess.c */
 extern map_t *macros;
 
-char *preprocess(char *s, pp_env_t *e);
+char *preprocess(char *s, char *filename, pp_env_t *e);
 
 /* tokenize.c */
 void tokenize(char *s);
@@ -383,6 +411,7 @@ void print_ir(ir_t *ir);
 void gen_asm(ir_t *ir);
 
 /* error.c */
-void error(const char *fmt, ...);
+void error(char *fmt, ...);
+void error_at(token_t *tk, char *fmt, ...);
 
 #endif

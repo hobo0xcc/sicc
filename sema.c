@@ -1,6 +1,7 @@
 #include "sicc.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 static enum {
   STAT_NONE = 0,
@@ -18,6 +19,7 @@ static map_t *gvar_types;
 static map_t *gfuncs;
 // Map of Local varialbe types
 static map_t *var_types;
+// static map_t *var_types;
 
 // Searching Global/Local Variable types
 // If the variable is local, that returns 1
@@ -84,12 +86,12 @@ void sema_walk(node_t *node, int stat) {
       sema_walk(vec_get(node->stmts, i), stat);
     }
     int var_len_after = map_len(var_types);
-    // for (int i = var_length_before; i < var_len_after; i++)
-    //   map_pop(var_types);
+    for (int i = var_length_before; i < var_len_after; i++)
+      map_pop(var_types);
   } break;
   case ND_NUM: {
-    type_info_t *info = map_get(types, "int");
-    node->type = new_type(info->size, info->ty);
+    type_t *ty = map_get(types, "int");
+    node->type = new_type(ty->size, ty->ty);
   } break;
   case ND_IDENT:
     if (!find_var_types(node->str))
@@ -111,7 +113,8 @@ void sema_walk(node_t *node, int stat) {
     ;
     break;
   case ND_RETURN:
-    sema_walk(node->lhs, STAT_EXPR);
+    if (node->lhs)
+      sema_walk(node->lhs, STAT_EXPR);
     break;
   case ND_IF:
     sema_walk(node->rhs, STAT_EXPR);
@@ -186,16 +189,16 @@ void sema_walk(node_t *node, int stat) {
   case ND_STRING:
     node->type = new_type(8, TY_PTR);
     {
-      type_info_t *info = map_get(types, "char");
-      node->type->ptr = new_type(info->size, info->ty);
+      type_t *ty = map_get(types, "char");
+      node->type->ptr = new_type(ty->size, ty->ty);
     }
     node->type->size_deref = 1;
     break;
   case ND_CHARACTER:
     node->num = *node->str;
     {
-      type_info_t *info = map_get(types, "char");
-      node->type = new_type(info->size, info->ty);
+      type_t *ty = map_get(types, "char");
+      node->type = new_type(ty->size, ty->ty);
     }
     break;
   case ND_SIZEOF:
@@ -239,7 +242,7 @@ void sema_walk(node_t *node, int stat) {
       is_left_ptr = 0;
     if (node->lhs->type->size_deref == 0 && node->rhs->type->size_deref == 0)
       error("index is only to use in pointer and array");
-    node->type = (is_left_ptr ? node->lhs->type->ptr : node->rhs->type->ptr);
+    node->type = is_left_ptr ? node->lhs->type->ptr : node->rhs->type->ptr;
     break;
   case ND_INITIALIZER:
     for (int i = 0; i < node->initializer->len; i++) {
@@ -270,9 +273,10 @@ void sema_walk(node_t *node, int stat) {
     break;
   case ND_ARROW:
     sema_walk(node->lhs, stat);
-    if (node->lhs->type->ty != TY_PTR || node->lhs->type->ptr->ty != TY_STRUCT)
-      error("Arrow operator cannot be used for what a type that's not a "
-            "pointer which references to struct.");
+    if (node->lhs->type->ty != TY_PTR || node->lhs->type->ptr->ty != TY_STRUCT) {
+      printf("%d\n", node->lhs->type->ptr->size);
+      error("Arrow operator cannot be used for what a type that's not a pointer which references to struct.");
+    }
     node->type = map_get(node->lhs->type->ptr->member->data, node->str);
     break;
   case ND_SWITCH:
@@ -307,6 +311,10 @@ void sema_walk(node_t *node, int stat) {
     sema_walk(node->lhs, STAT_EXPR);
     node->type = node->lhs->type;
     break;
+  case ND_MINUS:
+    sema_walk(node->lhs, STAT_EXPR);
+    node->type = node->lhs->type;
+    break;
   case ND_COND:
     sema_walk(node->lhs, STAT_EXPR);
     sema_walk(node->rhs, STAT_EXPR);
@@ -314,6 +322,7 @@ void sema_walk(node_t *node, int stat) {
   default:
     break;
   }
+  return;
 }
 
 void sema(node_t *node) {
@@ -321,4 +330,5 @@ void sema(node_t *node) {
   var_types = new_map();
   gfuncs = new_map();
   sema_walk(node, STAT_NONE);
+  return;
 }
